@@ -14,9 +14,8 @@ class Song(models.Model):
     external_id = models.CharField(max_length=100, unique=True)
     title = models.CharField(max_length=200)
     artist = models.CharField(max_length=200)
-    mood = models.ForeignKey(
+    mood = models.ManyToManyField(
         Mood,
-        on_delete=models.CASCADE,
         related_name='songs'
     )
 
@@ -39,9 +38,5 @@ class Memory(models.Model):
     dedicated_to = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ('user', 'song')
-
     def __str__(self):
         return f"{self.user.username} - {self.song.title}"

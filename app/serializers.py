@@ -27,8 +27,8 @@ class MoodSerializer(serializers.ModelSerializer):
         model = Mood
         fields = ('id', 'name', 'description')
 class SongSerializer(serializers.ModelSerializer):
-    mood_name = serializers.CharField(source='mood.name', read_only=True)
+    moods = MoodSerializer(many=True, read_only=True)
 
     class Meta:
         model = Song
-        fields = ('id', 'external_id', 'title', 'artist', 'mood', 'mood_name')
+        fields = ('id', 'external_id', 'title', 'artist', 'moods')

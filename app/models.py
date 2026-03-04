@@ -7,7 +7,7 @@ class Mood(models.Model):
     def __str__(self):
         return self.name
 class Song(models.Model):
-    external_id = models.CharField(max_length=100, unique=True)
+    external_id = models.CharField(max_length=100, unique=True,db_index=True)
     title = models.CharField(max_length=200)
     artist = models.CharField(max_length=200)
 
@@ -19,16 +19,8 @@ class Song(models.Model):
     def __str__(self):
         return f"{self.title} - {self.artist}"
 class Memory(models.Model):
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='memories'
-    )
-    song = models.ForeignKey(
-        Song,
-        on_delete=models.CASCADE,
-        related_name='memories'
-    )
+    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='memories')
+    song = models.ForeignKey(Song,on_delete=models.CASCADE,related_name='memories')
     note = models.TextField()
     dedicated_to = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -39,8 +31,8 @@ class Memory(models.Model):
         return f"{self.user.username} - {self.song.title}"
     
 class UserSongInteraction(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    song = models.ForeignKey(Song, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE,db_index=True)
+    song = models.ForeignKey(Song, on_delete=models.CASCADE,db_index=True)
     mood=models.ForeignKey(Mood,on_delete=models.CASCADE)
     play_count = models.IntegerField(default=0)
     liked = models.BooleanField(default=False)
@@ -49,11 +41,16 @@ class UserSongInteraction(models.Model):
     class Meta:
         unique_together = ('user', 'song','mood')
 class MoodSession(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE,db_index=True)
     mood = models.ForeignKey(Mood, on_delete=models.CASCADE)
-
-    songs = models.ManyToManyField(Song)
     generated_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         ordering = ['-generated_at']
+    def __str__(self):
+        return f"{self.user.username} - {self.mood.name} session"
+class SessionRecommendation(models.Model):
+    session = models.ForeignKey(MoodSession, on_delete=models.CASCADE,related_name="recommendations")
+    song = models.ForeignKey(Song, on_delete=models.CASCADE)
+    rank = models.IntegerField()
+    class Meta:
+        unique_together = ("session", "song")

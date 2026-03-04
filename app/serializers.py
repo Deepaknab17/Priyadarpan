@@ -11,11 +11,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ('username', 'email', 'password')
 
     def create(self, validated_data):
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password']
-        )
+        user = User.objects.create_user(username=validated_data['username'],email=validated_data['email'],password=validated_data['password'] )     
         return user
 class MemorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,7 +23,7 @@ class MoodSerializer(serializers.ModelSerializer):
         model = Mood
         fields = ('id', 'name', 'description')
 class SongSerializer(serializers.ModelSerializer):
-    moods = MoodSerializer(many=True, read_only=True)
+    mood= MoodSerializer(many=True, read_only=True)
 
     class Meta:
         model = Song

@@ -10,3 +10,4 @@ from django.utils import timezone
 
 time=timezone.now()
 print(time)
+print(timezone.LocalTimezone)

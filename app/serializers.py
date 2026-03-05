@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Memory,Mood,Song
+from .models import Memory, Mood, Song
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -8,23 +8,61 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password')
+        fields = ("username", "email", "password")
 
     def create(self, validated_data):
-        user = User.objects.create_user(username=validated_data['username'],email=validated_data['email'],password=validated_data['password'] )     
-        return user
-class MemorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Memory
-        fields = ('id', 'song', 'note', 'dedicated_to', 'created_at', 'updated_at')
-        read_only_fields = ('created_at', 'updated_at')
+        return User.objects.create_user(**validated_data)
+
+
 class MoodSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mood
-        fields = ('id', 'name', 'description')
+        fields = ("id", "name", "description", "emotional_value")
+
+
 class SongSerializer(serializers.ModelSerializer):
-    mood= MoodSerializer(many=True, read_only=True)
+    moods = MoodSerializer(many=True, read_only=True)
 
     class Meta:
         model = Song
-        fields = ('id', 'external_id', 'title', 'artist', 'moods')
+        fields = (
+            "id",
+            "external_id",
+            "title",
+            "artist",
+            "emotional_value",
+            "duration",
+            "play_count",
+            "moods",
+        )
+
+
+class MemorySerializer(serializers.ModelSerializer):
+
+    song = SongSerializer(read_only=True)
+
+    song_id = serializers.PrimaryKeyRelatedField(
+        queryset=Song.objects.all(),
+        source="song",
+        write_only=True
+    )
+
+    mood = serializers.PrimaryKeyRelatedField(
+        queryset=Mood.objects.all(),
+        required=False,
+        allow_null=True
+    )
+
+    class Meta:
+        model = Memory
+        fields = (
+            "id",
+            "song",
+            "song_id",
+            "mood",
+            "note",
+            "dedicated_to",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("created_at", "updated_at")

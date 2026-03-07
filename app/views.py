@@ -2,14 +2,38 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from django.shortcuts import get_object_or_404
+from django.shortcuts import render,redirect, get_object_or_404
+from django.http import JsonResponse
 from django.utils import timezone
 from datetime import timedelta
-import random
+import random,requests
 
+from django.conf import settings
 from .models import Memory, Mood, Song, MoodSession, SessionRecommendation
 from .serializers import RegisterSerializer, MemorySerializer, MoodSerializer, SongSerializer
 
+#Spotify Callback and login
+
+def spotify_login(req):
+    auth_url = (
+        "https://accounts.spotify.com/authorize"
+        f"?client_id={settings.SPOTIFY_CLIENT_ID}"
+        "&response_type=code"
+        f"&redirect_uri={settings.SPOTIFY_REDIRECT_URI}"
+        "&scope=streaming user-read-email user-read-private"
+    )
+    return redirect(auth_url)
+def spotify_callback(request):
+    code = request.GET.get("code")
+    token_url = "https://accounts.spotify.com/api/token"
+    response = requests.post(token_url, data={
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": settings.SPOTIFY_REDIRECT_URI,
+        "client_id": settings.SPOTIFY_CLIENT_ID,
+        "client_secret": settings.SPOTIFY_CLIENT_SECRET
+    })
+    return JsonResponse(response.json())
 
 # AUTH TEST
 @api_view(["GET"])

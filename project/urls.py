@@ -34,8 +34,8 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/test/', protected_test),
     path('api/register/', register_user),
-    path('login/',spotify_login),
-    path('callback/',spotify_callback),
+    path('api/spotify/login/', spotify_login),
+    path('api/spotify/callback/', spotify_callback),
     
     
 ]

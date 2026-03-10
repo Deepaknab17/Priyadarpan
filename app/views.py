@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from datetime import timedelta
 import random,requests,urllib.parse
-
+from app.services.recomendation_service import generate_session_recomendations
 from django.conf import settings
 from .models import Memory, Mood, Song, MoodSession, SessionRecommendation
 from .serializers import RegisterSerializer, MemorySerializer, MoodSerializer, SongSerializer
@@ -184,6 +184,7 @@ class MoodViewSet(viewsets.ViewSet):
 
         mood = self.get_object(pk)
 
+        # check cached session
         session = (
             MoodSession.objects
             .filter(user=req.user, mood=mood)
@@ -191,14 +192,10 @@ class MoodViewSet(viewsets.ViewSet):
             .first()
         )
 
-        # cached recommendation
         if session and timezone.now() - session.generated_at < timedelta(minutes=30):
 
             recommendations = (
-                session.recommendations
-                .select_related("song")
-                .order_by("rank")
-            )
+                session.recommendations.select_related("song").order_by("rank"))
 
             songs = [rec.song for rec in recommendations]
 
@@ -210,42 +207,18 @@ class MoodViewSet(viewsets.ViewSet):
                 "cached": True
             })
 
-        # generate new recommendations
-        songs = list(
-            Song.objects
-            .filter(moods=mood, is_available=True)
-            .prefetch_related("moods")
-        )
+        # generate new recommendations using service
+        session, recs = generate_session_recomendations(req.user, mood)
 
-        if len(songs) < 3:
-            return Response(
-                {"error": "Not enough songs"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        songs = [rec.song for rec in recs]
 
-        selected_songs = random.sample(songs, 3)
-
-        session = MoodSession.objects.create(
-            user=req.user,
-            mood=mood
-        )
-
-        for rank, song in enumerate(selected_songs, start=1):
-
-            SessionRecommendation.objects.create(
-                session=session,
-                song=song,
-                rank=rank
-            )
-
-        serializer = SongSerializer(selected_songs, many=True)
+        serializer = SongSerializer(songs, many=True)
 
         return Response({
             "mood": mood.name,
             "songs": serializer.data,
             "cached": False
         })
-
 
 # SONG VIEWSET
 class SongViewSet(viewsets.ViewSet):

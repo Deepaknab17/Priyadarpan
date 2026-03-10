@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'django_extensions'
 ]
+# cloudniary integration
 import os
 import cloudinary
 CLOUDINARY_STORAGE = {
@@ -82,7 +83,7 @@ TEMPLATES = [
     },
 ]
 WSGI_APPLICATION = 'project.wsgi.application'
-# Database
+# Database postgres
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
@@ -123,6 +124,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 STATIC_URL = 'static/'
+# Jwt Authentication
 from datetime import timedelta
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -134,14 +136,14 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+# email module
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'deepaknab17@gmail.com'
 EMAIL_HOST_PASSWORD = 'gylixwkhdooivzko'
-
-
+# spotify 
 SPOTIFY_CLIENT_ID = "ede32a4d30bc4669935f99b92e8727fe"
 SPOTIFY_CLIENT_SECRET = "593096b8205544e1b317507740ae18c2"
 SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8000/callback/"

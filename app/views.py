@@ -6,7 +6,7 @@ from django.shortcuts import render,redirect, get_object_or_404
 from django.http import JsonResponse
 from django.utils import timezone
 from datetime import timedelta
-import random,requests
+import random,requests,urllib.parse
 
 from django.conf import settings
 from .models import Memory, Mood, Song, MoodSession, SessionRecommendation
@@ -14,27 +14,57 @@ from .serializers import RegisterSerializer, MemorySerializer, MoodSerializer, S
 
 #Spotify Callback and login
 
-def spotify_login(req):
-    auth_url = (
-        "https://accounts.spotify.com/authorize"
-        f"?client_id={settings.SPOTIFY_CLIENT_ID}"
-        "&response_type=code"
-        f"&redirect_uri={settings.SPOTIFY_REDIRECT_URI}"
-        "&scope=streaming user-read-email user-read-private"
-    )
+def spotify_login(request):
+
+    scope = "user-read-private user-read-email"
+
+    params = {
+        "client_id": settings.SPOTIFY_CLIENT_ID,
+        "response_type": "code",
+        "redirect_uri": settings.SPOTIFY_REDIRECT_URI,
+        "scope": scope,
+    }
+
+    auth_url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode(params)
+
     return redirect(auth_url)
 def spotify_callback(request):
-    code = request.GET.get("code")
-    token_url = "https://accounts.spotify.com/api/token"
-    response = requests.post(token_url, data={
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": settings.SPOTIFY_REDIRECT_URI,
-        "client_id": settings.SPOTIFY_CLIENT_ID,
-        "client_secret": settings.SPOTIFY_CLIENT_SECRET
-    })
-    return JsonResponse(response.json())
 
+    code = request.GET.get("code")
+
+    if not code:
+        return JsonResponse({"error": "No authorization code received"}, status=400)
+
+    token_url = "https://accounts.spotify.com/api/token"
+
+    response = requests.post(
+        token_url,
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": settings.SPOTIFY_REDIRECT_URI,
+            "client_id": settings.SPOTIFY_CLIENT_ID,
+            "client_secret": settings.SPOTIFY_CLIENT_SECRET,
+        },
+    )
+
+    token_data = response.json()
+
+    access_token = token_data.get("access_token")
+    refresh_token = token_data.get("refresh_token")
+
+    if not access_token:
+        return JsonResponse({"error": "Failed to obtain access token", "details": token_data})
+
+    # store tokens in session
+    request.session["access_token"] = access_token
+    request.session["refresh_token"] = refresh_token
+
+    return JsonResponse({
+        "message": "Spotify connected successfully",
+        "access_token": access_token,
+        "refresh_token": refresh_token
+    })
 # AUTH TEST
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])

@@ -2,18 +2,30 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from django.shortcuts import render,redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404
 from django.http import JsonResponse
 from django.utils import timezone
 from datetime import timedelta
-import random,requests,urllib.parse
-from app.services.recomendation_service import generate_session_recomendations
+import requests, urllib.parse
+
 from django.conf import settings
+
+from app.services.recomendation_service import generate_session_recomendations
+
 from .models import Memory, Mood, Song, MoodSession, SessionRecommendation
 from .serializers import RegisterSerializer, MemorySerializer, MoodSerializer, SongSerializer
 
-#Spotify Callback and login
 
+# -------------------------
+# Helper
+# -------------------------
+def get_tenant(req):
+    return req.user.profile.tenant
+
+
+# -------------------------
+# Spotify Login
+# -------------------------
 def spotify_login(request):
 
     scope = "user-read-private user-read-email"
@@ -28,6 +40,11 @@ def spotify_login(request):
     auth_url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode(params)
 
     return redirect(auth_url)
+
+
+# -------------------------
+# Spotify Callback
+# -------------------------
 def spotify_callback(request):
 
     code = request.GET.get("code")
@@ -56,7 +73,6 @@ def spotify_callback(request):
     if not access_token:
         return JsonResponse({"error": "Failed to obtain access token", "details": token_data})
 
-    # store tokens in session
     request.session["access_token"] = access_token
     request.session["refresh_token"] = refresh_token
 
@@ -65,23 +81,32 @@ def spotify_callback(request):
         "access_token": access_token,
         "refresh_token": refresh_token
     })
-# AUTH TEST
+
+
+# -------------------------
+# Auth Test
+# -------------------------
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def protected_test(req):
+
     return Response({
         "message": "You are authenticated",
         "user": req.user.username
     })
 
 
-# REGISTER USER
+# -------------------------
+# Register User
+# -------------------------
 @api_view(["POST"])
 def register_user(req):
+
     serializer = RegisterSerializer(data=req.data)
 
     if serializer.is_valid():
         serializer.save()
+
         return Response(
             {"message": "User created successfully"},
             status=status.HTTP_201_CREATED
@@ -90,27 +115,35 @@ def register_user(req):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# MEMORY VIEWSET
+# -------------------------
+# Memory ViewSet
+# -------------------------
 class MemoryViewSet(viewsets.ViewSet):
 
     permission_classes = [IsAuthenticated]
 
     def get_object(self, pk, user):
+
         return get_object_or_404(
             Memory.objects.select_related("song"),
             pk=pk,
-            user=user
+            user=user,
+            tenant=user.profile.tenant
         )
 
     def list(self, req):
 
         memories = (
             Memory.objects
-            .filter(user=req.user)
+            .filter(
+                user=req.user,
+                tenant=get_tenant(req)
+            )
             .select_related("song")
         )
 
         serializer = MemorySerializer(memories, many=True)
+
         return Response(serializer.data)
 
     def create(self, req):
@@ -118,7 +151,12 @@ class MemoryViewSet(viewsets.ViewSet):
         serializer = MemorySerializer(data=req.data)
 
         if serializer.is_valid():
-            serializer.save(user=req.user)
+
+            serializer.save(
+                user=req.user,
+                tenant=get_tenant(req)
+            )
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -140,10 +178,13 @@ class MemoryViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# MOOD VIEWSET
+# -------------------------
+# Mood ViewSet
+# -------------------------
 class MoodViewSet(viewsets.ViewSet):
 
     def get_object(self, pk):
+
         return get_object_or_404(Mood, pk=pk)
 
     def list(self, req):
@@ -162,7 +203,6 @@ class MoodViewSet(viewsets.ViewSet):
 
         return Response(serializer.data)
 
-    # GET /moods/{id}/songs
     @action(detail=True, methods=["get"])
     def songs(self, req, pk=None):
 
@@ -178,16 +218,18 @@ class MoodViewSet(viewsets.ViewSet):
 
         return Response(serializer.data)
 
-    # GET /moods/{id}/experience
     @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
     def experience(self, req, pk=None):
 
         mood = self.get_object(pk)
 
-        # check cached session
         session = (
             MoodSession.objects
-            .filter(user=req.user, mood=mood)
+            .filter(
+                user=req.user,
+                tenant=get_tenant(req),
+                mood=mood
+            )
             .order_by("-generated_at")
             .first()
         )
@@ -195,7 +237,10 @@ class MoodViewSet(viewsets.ViewSet):
         if session and timezone.now() - session.generated_at < timedelta(minutes=30):
 
             recommendations = (
-                session.recommendations.select_related("song").order_by("rank"))
+                session.recommendations
+                .select_related("song")
+                .order_by("rank")
+            )
 
             songs = [rec.song for rec in recommendations]
 
@@ -207,7 +252,6 @@ class MoodViewSet(viewsets.ViewSet):
                 "cached": True
             })
 
-        # generate new recommendations using service
         session, recs = generate_session_recomendations(req.user, mood)
 
         songs = [rec.song for rec in recs]
@@ -220,7 +264,10 @@ class MoodViewSet(viewsets.ViewSet):
             "cached": False
         })
 
-# SONG VIEWSET
+
+# -------------------------
+# Song ViewSet
+# -------------------------
 class SongViewSet(viewsets.ViewSet):
 
     def get_object(self, pk):

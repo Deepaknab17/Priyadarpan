@@ -4,16 +4,19 @@ from app.services.recommendation import emotional_progression
 
 def generate_session_recomendations(user, mood):
 
-    # create a new mood session
+    tenant = user.profile.tenant
+
+    # create session with tenant
     session = MoodSession.objects.create(
+        tenant=tenant,
         user=user,
         mood=mood
     )
 
-    # get recommended songs from your algorithm
-    songs = emotional_progression(mood)
+    # generate songs
+    songs = emotional_progression(mood, tenant)
 
-    recomendations = []
+    recommendations = []
 
     for rank, song in enumerate(songs, start=1):
 
@@ -23,6 +26,6 @@ def generate_session_recomendations(user, mood):
             rank=rank
         )
 
-        recomendations.append(rec)
+        recommendations.append(rec)
 
-    return session, recomendations
+    return session, recommendations

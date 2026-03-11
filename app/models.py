@@ -3,7 +3,70 @@ from django.contrib.auth.models import User
 
 
 # -------------------------
-# Mood
+# Tenant
+# -------------------------
+class Tenant(models.Model):
+
+    name = models.CharField(max_length=100, unique=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+# -------------------------
+# Base Tenant Model
+# -------------------------
+class TenantModel(models.Model):
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        db_index=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
+
+
+# -------------------------
+# Profile (User → Tenant)
+# -------------------------
+class Profile(models.Model):
+
+    ROLE_CHOICES = (
+        ("admin", "Tenant Admin"),
+        ("user", "User"),
+    )
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="profile"
+    )
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="users",
+        db_index=True
+    )
+
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default="user"
+    )
+
+    def __str__(self):
+        return f"{self.user.username} - {self.tenant.name}"
+
+
+# -------------------------
+# Mood (GLOBAL)
 # -------------------------
 class Mood(models.Model):
 
@@ -11,16 +74,16 @@ class Mood(models.Model):
 
     description = models.TextField(blank=True)
 
-    # emotional space (2D model)
-    valence = models.FloatField(db_index=True)   # sadness (-1) → happiness (+1)
-    energy = models.FloatField(db_index=True)    # calm (0) → intense (1)
+    valence = models.FloatField(db_index=True)
+
+    energy = models.FloatField(db_index=True)
 
     def __str__(self):
         return self.name
 
 
 # -------------------------
-# Artist
+# Artist (GLOBAL)
 # -------------------------
 class Artist(models.Model):
 
@@ -33,9 +96,14 @@ class Artist(models.Model):
 
 
 # -------------------------
-# Song
+# Song (GLOBAL)
 # -------------------------
 class Song(models.Model):
+
+    source = models.CharField(
+        max_length=50,
+        default="spotify"
+    )
 
     external_id = models.CharField(
         max_length=100,
@@ -50,12 +118,6 @@ class Song(models.Model):
         related_name="songs"
     )
 
-    moods = models.ManyToManyField(
-        Mood,
-        related_name="songs"
-    )
-
-    # emotional coordinates
     valence = models.FloatField(
         null=True,
         db_index=True
@@ -66,14 +128,14 @@ class Song(models.Model):
         db_index=True
     )
 
-    is_available = models.BooleanField(
-        default=True,
-        db_index=True
-    )
-
     duration_seconds = models.IntegerField(
         null=True,
         blank=True
+    )
+
+    is_available = models.BooleanField(
+        default=True,
+        db_index=True
     )
 
     play_count = models.IntegerField(default=0)
@@ -82,20 +144,25 @@ class Song(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["valence", "energy", "is_available"]),
+        ]
+
     def __str__(self):
-        artists = ", ".join([a.name for a in self.artists.all()])
-        return f"{self.title} - {artists}"
+        return self.title
 
 
 # -------------------------
-# Memory
+# Memory (Tenant Scoped)
 # -------------------------
-class Memory(models.Model):
+class Memory(TenantModel):
 
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="memories"
+        related_name="memories",
+        db_index=True
     )
 
     song = models.ForeignKey(
@@ -118,21 +185,16 @@ class Memory(models.Model):
         blank=True
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
 
-    def __str__(self):
-        return f"{self.user.username} - {self.song.title}"
-
 
 # -------------------------
 # User Interaction
 # -------------------------
-class UserSongInteraction(models.Model):
+class UserSongInteraction(TenantModel):
 
     user = models.ForeignKey(
         User,
@@ -142,8 +204,7 @@ class UserSongInteraction(models.Model):
 
     song = models.ForeignKey(
         Song,
-        on_delete=models.CASCADE,
-        db_index=True
+        on_delete=models.CASCADE
     )
 
     mood = models.ForeignKey(
@@ -163,13 +224,13 @@ class UserSongInteraction(models.Model):
     )
 
     class Meta:
-        unique_together = ("user", "song", "mood")
+        unique_together = ("tenant", "user", "song", "mood")
 
 
 # -------------------------
 # Mood Session
 # -------------------------
-class MoodSession(models.Model):
+class MoodSession(TenantModel):
 
     user = models.ForeignKey(
         User,
@@ -187,14 +248,11 @@ class MoodSession(models.Model):
     class Meta:
         ordering = ["-generated_at"]
 
-    def __str__(self):
-        return f"{self.user.username} - {self.mood.name} session"
-
 
 # -------------------------
 # Session Recommendation
 # -------------------------
-class SessionRecommendation(models.Model):
+class SessionRecommendation(TenantModel):
 
     session = models.ForeignKey(
         MoodSession,
@@ -210,5 +268,8 @@ class SessionRecommendation(models.Model):
     rank = models.IntegerField()
 
     class Meta:
-        unique_together = ("session", "song")
         ordering = ["rank"]
+        unique_together = [
+            ("session", "song"),
+            ("session", "rank")
+        ]

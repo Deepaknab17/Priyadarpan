@@ -9,6 +9,7 @@ def get_playlist_tracks(access_token, playlist_id):
     """
 
     url = f"{SPOTIFY_API_BASE}/playlists/{playlist_id}/tracks"
+    print("URL:", url)
 
     headers = {
         "Authorization": f"Bearer {access_token}"
@@ -25,6 +26,8 @@ def get_playlist_tracks(access_token, playlist_id):
         response = requests.get(url, headers=headers, params=params)
 
         if response.status_code != 200:
+            print("STATUS:", response.status_code)
+            print("BODY:", response.text)
             raise Exception("Spotify API error")
 
         data = response.json()
@@ -83,3 +86,36 @@ def get_audio_features(access_token, track_ids):
         }
 
     return features
+def search_tracks(access_token, query, limit=20):
+
+    url = f"{SPOTIFY_API_BASE}/search"
+
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    params = {
+        "q": query,
+        "type": "track",
+        "limit": limit
+    }
+
+    response = requests.get(url, headers=headers, params=params)
+
+    if response.status_code != 200:
+        raise Exception(f"Spotify API error: {response.status_code} - {response.text}")
+
+    data = response.json()
+
+    tracks = []
+
+    for item in data["tracks"]["items"]:
+
+        tracks.append({
+            "id": item["id"],
+            "title": item["name"],
+            "artists": [a["name"] for a in item["artists"]],
+            "duration": item["duration_ms"] // 1000
+        })
+
+    return tracks

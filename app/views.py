@@ -27,8 +27,8 @@ def get_tenant(req):
 # Spotify Login
 # -------------------------
 def spotify_login(request):
+    scope= "user-read-private user-read-email playlist-read-private playlist-read-collaborative"
 
-    scope = "user-read-private user-read-email"
 
     params = {
         "client_id": settings.SPOTIFY_CLIENT_ID,
@@ -75,6 +75,8 @@ def spotify_callback(request):
 
     request.session["access_token"] = access_token
     request.session["refresh_token"] = refresh_token
+    print("Callback hit")
+    print(token_data)
 
     return JsonResponse({
         "message": "Spotify connected successfully",
@@ -176,6 +178,25 @@ class MemoryViewSet(viewsets.ViewSet):
         memory.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+# from django.http import JsonResponse
+# from app.services.spotify_service import get_playlist_tracks
+
+
+# def test_spotify_tracks(request):
+
+#     access_token = request.session.get("access_token")
+
+#     if not access_token:
+#         return JsonResponse({"error": "No access token"})
+
+#     playlist_id =  "37i9dQZF1DX4dyzvuaRJ0n"  # Spotify Top Hits
+
+#     tracks = get_playlist_tracks(access_token, playlist_id)
+
+#     return JsonResponse({
+#         "count": len(tracks),
+#         "tracks": tracks[:5]
+#     })
 
 
 # -------------------------
@@ -297,3 +318,16 @@ class SongViewSet(viewsets.ViewSet):
         serializer = SongSerializer(song)
 
         return Response(serializer.data)
+
+from app.services.spotify_service import search_tracks
+
+def test_spotify_tracks(request):
+
+    access_token = request.session.get("access_token")
+
+    tracks = search_tracks(access_token, "happy")
+
+    return JsonResponse({
+        "count": len(tracks),
+        "tracks": tracks[:5]
+    })

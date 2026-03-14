@@ -7,14 +7,10 @@ from django.http import JsonResponse
 from django.utils import timezone
 from datetime import timedelta
 import requests, urllib.parse
-
 from django.conf import settings
-
 from app.services.recomendation_service import generate_session_recomendations
-
 from .models import Memory, Mood, Song, MoodSession, SessionRecommendation
 from .serializers import RegisterSerializer, MemorySerializer, MoodSerializer, SongSerializer
-
 
 # -------------------------
 # Helper
@@ -28,30 +24,21 @@ def get_tenant(req):
 # -------------------------
 def spotify_login(request):
     scope= "user-read-private user-read-email playlist-read-private playlist-read-collaborative"
-
-
     params = {
         "client_id": settings.SPOTIFY_CLIENT_ID,
         "response_type": "code",
         "redirect_uri": settings.SPOTIFY_REDIRECT_URI,
         "scope": scope,
     }
-
     auth_url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode(params)
-
     return redirect(auth_url)
-
-
 # -------------------------
 # Spotify Callback
 # -------------------------
 def spotify_callback(request):
-
     code = request.GET.get("code")
-
     if not code:
         return JsonResponse({"error": "No authorization code received"}, status=400)
-
     token_url = "https://accounts.spotify.com/api/token"
 
     response = requests.post(

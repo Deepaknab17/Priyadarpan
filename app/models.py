@@ -138,7 +138,7 @@ class Song(models.Model):
         db_index=True
     )
 
-    play_count = models.IntegerField(default=0)
+    play_count = models.PositiveIntegerField(default=0)
 
     last_synced = models.DateTimeField(auto_now=True)
 
@@ -212,9 +212,9 @@ class UserSongInteraction(TenantModel):
         on_delete=models.CASCADE
     )
 
-    play_count = models.IntegerField(default=0)
+    play_count = models.PositiveIntegerField(default=0)
 
-    skipped_count = models.IntegerField(default=0)
+    skipped_count = models.PositiveIntegerField(default=0)
 
     liked = models.BooleanField(default=False)
 
@@ -225,6 +225,10 @@ class UserSongInteraction(TenantModel):
 
     class Meta:
         unique_together = ("tenant", "user", "song", "mood")
+        indexes = [
+            models.Index(fields=["tenant", "user"]),
+            models.Index(fields=["song"]),
+        ]
 
 
 # -------------------------
@@ -240,7 +244,8 @@ class MoodSession(TenantModel):
 
     mood = models.ForeignKey(
         Mood,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        db_index=True
     )
 
     generated_at = models.DateTimeField(auto_now_add=True)
@@ -252,7 +257,7 @@ class MoodSession(TenantModel):
 # -------------------------
 # Session Recommendation
 # -------------------------
-class SessionRecommendation(TenantModel):
+class SessionRecommendation(models.Model):
 
     session = models.ForeignKey(
         MoodSession,
@@ -271,5 +276,5 @@ class SessionRecommendation(TenantModel):
         ordering = ["rank"]
         unique_together = [
             ("session", "song"),
-            ("session", "rank")
+            ("session", "rank"),
         ]

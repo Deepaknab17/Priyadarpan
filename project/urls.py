@@ -37,6 +37,4 @@ urlpatterns = [
     path('api/spotify/login/', spotify_login),
     path('api/spotify/callback/', spotify_callback),
     path("test-spotify/", test_spotify_tracks),
-    path("test-spotify/", test_spotify_tracks),
-       
 ]

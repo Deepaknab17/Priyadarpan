@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
-    'django_extensions'
+    'django_extensions',
     'corsheaders'
 ]
 # cloudniary integration

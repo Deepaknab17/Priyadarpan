@@ -1,37 +1,25 @@
 from django.db import models
 from django.contrib.auth.models import User
-
-
 # -------------------------
 # Tenant
 # -------------------------
 class Tenant(models.Model):
-
     name = models.CharField(max_length=100, unique=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
-
     def __str__(self):
         return self.name
-
-
 # -------------------------
 # Base Tenant Model
 # -------------------------
 class TenantModel(models.Model):
-
     tenant = models.ForeignKey(
         Tenant,
         on_delete=models.CASCADE,
         db_index=True
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         abstract = True
-
-
 # -------------------------
 # Profile (User → Tenant)
 # -------------------------
@@ -258,20 +246,16 @@ class MoodSession(TenantModel):
 # Session Recommendation
 # -------------------------
 class SessionRecommendation(models.Model):
-
     session = models.ForeignKey(
         MoodSession,
         on_delete=models.CASCADE,
         related_name="recommendations"
     )
-
     song = models.ForeignKey(
         Song,
         on_delete=models.CASCADE
     )
-
     rank = models.IntegerField()
-
     class Meta:
         ordering = ["rank"]
         unique_together = [

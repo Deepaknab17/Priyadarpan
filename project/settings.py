@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'app',
+    'payments',
     'cloudinary',
     'cloudinary_storage',
     'rest_framework',
@@ -158,4 +159,5 @@ EMAIL_HOST_PASSWORD = 'gylixwkhdooivzko'
 SPOTIFY_CLIENT_ID = "ede32a4d30bc4669935f99b92e8727fe"
 SPOTIFY_CLIENT_SECRET = "593096b8205544e1b317507740ae18c2"
 SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8000/api/spotify/callback/"
-
+RAZORPAY_KEY = "rzp_test_pr99iascS1WRtU"
+RAZORPAY_SECRET = "UTDIzPGwICnAssu3Q3lk7zUi"

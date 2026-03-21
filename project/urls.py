@@ -21,6 +21,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from app.views import *
+from payments.views import *
 from rest_framework.routers import DefaultRouter
 router = DefaultRouter()
 router.register(r'memories', MemoryViewSet, basename='memory')
@@ -37,4 +38,5 @@ urlpatterns = [
     path('api/spotify/login/', spotify_login),
     path('api/spotify/callback/', spotify_callback),
     path("test-spotify/", test_spotify_tracks),
+    path("payments/", include("payments.urls")),
 ]

@@ -261,5 +261,4 @@ class SessionRecommendation(models.Model):
         unique_together = [
             ("session", "song"),
             ("session", "rank"),
-            "deepak"
         ]

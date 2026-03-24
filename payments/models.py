@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 # Create your models here.
 class Payment(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE,blank=True, null=True)
     amount = models.IntegerField()
     order_id = models.CharField(max_length=1000)
     razorpay_payment_id = models.CharField(max_length=1000, blank=True)

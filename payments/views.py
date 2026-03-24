@@ -21,12 +21,15 @@ def create_payment(request):
         })
 
         Payment.objects.create(
-            user=request.user,
+            user=request.user if request.user.is_authenticated else None,
             amount=amount,
             order_id=order['id']
         )
 
-        return render(request, "payments/payment.html", {"order": order})
+        return render(request, "payments/payment.html", {
+    "order": order,
+    "key": settings.RAZORPAY_KEY
+})
 
     return render(request, "payments/payment.html")
 

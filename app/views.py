@@ -11,6 +11,7 @@ from django.conf import settings
 from app.services.recomendation_service import generate_session_recomendations
 from .models import Memory, Mood, Song, MoodSession, SessionRecommendation
 from .serializers import RegisterSerializer, MemorySerializer, MoodSerializer, SongSerializer
+from .services.mood_engine import get_mood_response
 
 # -------------------------
 # Helper
@@ -251,25 +252,27 @@ class MoodViewSet(viewsets.ViewSet):
             )
 
             songs = [rec.song for rec in recommendations]
-
             serializer = SongSerializer(songs, many=True)
+            response_text = get_mood_response(mood.name)
 
             return Response({
                 "mood": mood.name,
                 "songs": serializer.data,
-                "cached": True
+                "cached": True,
+                response_text:True
             })
 
         session, recs = generate_session_recomendations(req.user, mood)
 
         songs = [rec.song for rec in recs]
-
         serializer = SongSerializer(songs, many=True)
+        response_text = get_mood_response(mood.name)
 
         return Response({
             "mood": mood.name,
             "songs": serializer.data,
-            "cached": False
+            "cached": False,
+            response_text:False
         })
 
 

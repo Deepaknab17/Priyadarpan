@@ -162,6 +162,6 @@ SPOTIFY_REDIRECT_URI = "http://127.0.0.1:8000/api/spotify/callback/"
 # neeraj sir
 RAZORPAY_KEY = "rzp_test_pr99iascS1WRtU"
 RAZORPAY_SECRET = "UTDIzPGwICnAssu3Q3lk7zUi"
-# my secret
+# # my secret
 # RAZORPAY_KEY = "rzp_test_SVCAf1OmmkfviZ"
 # RAZORPAY_SECRET = "xggb1GK3llks6Y9JpQ0P2I53"

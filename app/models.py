@@ -233,8 +233,17 @@ class MoodSession(TenantModel):
     mood = models.ForeignKey(
         Mood,
         on_delete=models.CASCADE,
-        db_index=True
+        db_index=True,
+        
     )
+    input_text = models.TextField(null=True,
+        blank=True,)
+    response = models.TextField(
+        null=True,
+        blank=True,
+    
+    )
+
 
     generated_at = models.DateTimeField(auto_now_add=True)
 

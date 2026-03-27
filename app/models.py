@@ -21,11 +21,16 @@ class TenantModel(models.Model):
     class Meta:
         abstract = True
 # -------------------------
-# Profile (User → Tenant)
+# Profile (User → Tenant+ SuperAdmin)
 # -------------------------
+from django.db import models
+from django.contrib.auth.models import User
+
+
 class Profile(models.Model):
 
     ROLE_CHOICES = (
+        ("superadmin", "SuperAdmin"),
         ("admin", "Tenant Admin"),
         ("user", "User"),
     )
@@ -36,11 +41,14 @@ class Profile(models.Model):
         related_name="profile"
     )
 
+    # 🔥 Make tenant optional (important for superadmin)
     tenant = models.ForeignKey(
-        Tenant,
+        "Tenant",
         on_delete=models.CASCADE,
         related_name="users",
-        db_index=True
+        db_index=True,
+        null=True,
+        blank=True
     )
 
     role = models.CharField(
@@ -49,9 +57,17 @@ class Profile(models.Model):
         default="user"
     )
 
-    def __str__(self):
-        return f"{self.user.username} - {self.tenant.name}"
+    def save(self, *args, **kwargs):
+        if self.role == "superadmin":
+            self.tenant = None
 
+        if self.role in ["admin", "user"] and not self.tenant:
+            raise ValueError("Admin/User must belong to a tenant")
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.role}"
 
 # -------------------------
 # Mood (GLOBAL)

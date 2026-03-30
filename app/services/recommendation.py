@@ -1,21 +1,15 @@
 import random
 from app.models import Song
-
 RECOMMENDATION_COUNT=3
-
 def pick_song(queryset, selected_ids):
-   
     songs = list(queryset.exclude(id__in=selected_ids)[:10])
     if not songs:
         return None
     return random.choice(songs)
 
-
 def emotional_progression(mood):
-
     base_valence = mood.valence
     base_energy = mood.energy
-
     selected_songs = []
     selected_ids = []
 

@@ -10,7 +10,7 @@ import requests, urllib.parse
 
 from django.conf import settings
 
-from app.services.recommendation_service import generate_session_recommendations
+from app.services.recomendation_service import generate_session_recommendations
 from .models import Memory, Mood, Song, MoodSession, SessionRecommendation, UserSongInteraction
 from .serializers import RegisterSerializer, MemorySerializer, MoodSerializer, SongSerializer
 from .services.mood_engine import get_mood_response
@@ -44,9 +44,7 @@ def spotify_login(request):
 # Spotify Callback
 # -------------------------
 def spotify_callback(request):
-
     code = request.GET.get("code")
-
     if not code:
         return JsonResponse({"error": "No authorization code received"}, status=400)
 
@@ -62,84 +60,62 @@ def spotify_callback(request):
             "client_secret": settings.SPOTIFY_CLIENT_SECRET,
         },
     )
-
     token_data = response.json()
-
     access_token = token_data.get("access_token")
     refresh_token = token_data.get("refresh_token")
-
     if not access_token:
         return JsonResponse({
             "error": "Failed to obtain access token",
             "details": token_data
         })
-
     request.session["access_token"] = access_token
     request.session["refresh_token"] = refresh_token
-
     return JsonResponse({
         "message": "Spotify connected successfully",
         "access_token": access_token,
         "refresh_token": refresh_token
     })
-
-
 # -------------------------
 # Auth Test
 # -------------------------
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def protected_test(req):
-
     return Response({
         "message": "You are authenticated",
         "user": req.user.username
     })
-
-
 # -------------------------
 # Register User
 # -------------------------
 @api_view(["POST"])
 def register_user(req):
-
     serializer = RegisterSerializer(data=req.data)
-
     if serializer.is_valid():
         serializer.save()
-
         return Response(
             {"message": "User created successfully"},
             status=status.HTTP_201_CREATED
         )
-
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 # -------------------------
 # Memory ViewSet
 # -------------------------
 class MemoryViewSet(viewsets.ViewSet):
-
     permission_classes = [IsAuthenticated]
-
     def get_object(self, pk, user):
-
         return get_object_or_404(
             Memory.objects.select_related("song"),
             pk=pk,
             user=user,
             tenant=user.profile.tenant
         )
-
     def list(self, req):
-
         memories = (
             Memory.objects
             .filter(user=req.user, tenant=get_tenant(req))
             .select_related("song")
         )
-
         return Response(MemorySerializer(memories, many=True).data)
 
     def create(self, req):

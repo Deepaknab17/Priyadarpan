@@ -165,3 +165,7 @@ RAZORPAY_SECRET = "UTDIzPGwICnAssu3Q3lk7zUi"
 # # my secret
 # RAZORPAY_KEY = "rzp_test_SVCAf1OmmkfviZ"
 # RAZORPAY_SECRET = "xggb1GK3llks6Y9JpQ0P2I53"
+# tanishka
+# RAZORPAY_KEY = "rzp_test_SHunYGxeTIsCSR"
+# RAZORPAY_SECRET = "KYcY483yhOZpLy8He4L535bM"
+

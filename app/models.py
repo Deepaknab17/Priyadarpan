@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 # -------------------------
 # Tenant
 # -------------------------
@@ -27,21 +29,18 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
-class Profile(models.Model):
 
+class Profile(models.Model):
     ROLE_CHOICES = (
         ("superadmin", "SuperAdmin"),
         ("admin", "Tenant Admin"),
         ("user", "User"),
     )
-
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         related_name="profile"
     )
-
-    # 🔥 Make tenant optional (important for superadmin)
     tenant = models.ForeignKey(
         "Tenant",
         on_delete=models.CASCADE,
@@ -50,25 +49,25 @@ class Profile(models.Model):
         null=True,
         blank=True
     )
-
     role = models.CharField(
         max_length=20,
         choices=ROLE_CHOICES,
         default="user"
     )
-
+    premium_until = models.DateTimeField(null=True, blank=True)
     def save(self, *args, **kwargs):
         if self.role == "superadmin":
             self.tenant = None
-
         if self.role in ["admin", "user"] and not self.tenant:
             raise ValueError("Admin/User must belong to a tenant")
-
         super().save(*args, **kwargs)
-
     def __str__(self):
         return f"{self.user.username} - {self.role}"
-
+    @property
+    def is_premium_active(self):
+        if self.premium_until:
+            return self.premium_until > timezone.now()
+        return False
 # -------------------------
 # Mood (GLOBAL)
 # -------------------------
@@ -226,15 +225,12 @@ class UserSongInteraction(TenantModel):
         null=True,
         blank=True
     )
-
     class Meta:
         unique_together = ("tenant", "user", "song", "mood")
         indexes = [
             models.Index(fields=["tenant", "user"]),
             models.Index(fields=["song"]),
         ]
-
-
 # -------------------------
 # Mood Session
 # -------------------------
@@ -259,13 +255,10 @@ class MoodSession(TenantModel):
         blank=True,
     
     )
-
-
     generated_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-generated_at"]
-
 
 # -------------------------
 # Session Recommendation

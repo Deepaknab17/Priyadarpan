@@ -2,7 +2,7 @@ from app.models import MoodSession, SessionRecommendation,UserSongInteraction
 from app.services.recommendation import emotional_progression
 
 # ssession_recomendation
-def generate_session_recomendations(user, mood):
+def generate_session_recommendations(user, mood):
     tenant = user.profile.tenant
     # create session with tenant
     session = MoodSession.objects.create(
@@ -19,7 +19,6 @@ def generate_session_recomendations(user, mood):
     tenant=tenant,
     mood=mood
 )
-
     interaction_map = {
     i.song_id: i for i in interactions
 }
@@ -27,10 +26,8 @@ def generate_session_recomendations(user, mood):
 #  scoring function
     def score(song):
         interaction = interaction_map.get(song.id)
-
         if not interaction:
             return 0
-
         score = 0
         score += interaction.play_count * 2
         score += interaction.liked * 5

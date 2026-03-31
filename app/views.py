@@ -7,9 +7,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from datetime import timedelta
 import requests, urllib.parse
-
 from django.conf import settings
-
 from app.services.recomendation_service import generate_session_recommendations
 from .models import Memory, Mood, Song, MoodSession, SessionRecommendation, UserSongInteraction
 from .serializers import RegisterSerializer, MemorySerializer, MoodSerializer, SongSerializer
@@ -22,24 +20,19 @@ from .services.mood_engine import get_mood_response
 def get_tenant(req):
     return req.user.profile.tenant
 
-
 # -------------------------
 # Spotify Login
 # -------------------------
 def spotify_login(request):
     scope = "user-read-private user-read-email playlist-read-private playlist-read-collaborative"
-
     params = {
         "client_id": settings.SPOTIFY_CLIENT_ID,
         "response_type": "code",
         "redirect_uri": settings.SPOTIFY_REDIRECT_URI,
         "scope": scope,
     }
-
     auth_url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode(params)
     return redirect(auth_url)
-
-
 # -------------------------
 # Spotify Callback
 # -------------------------
@@ -169,7 +162,7 @@ class MoodViewSet(viewsets.ViewSet):
             .first()
         )
 
-        # ✅ Cached session
+        # Cached session
         if (
             session and
             timezone.now() - session.generated_at < timedelta(minutes=30) and
@@ -187,7 +180,7 @@ class MoodViewSet(viewsets.ViewSet):
                 "cached": True
             })
 
-        # 🚀 Generate new session
+        #  Generate new session
         session, recs = generate_session_recommendations(
             user=req.user,
             mood=mood,
@@ -207,8 +200,6 @@ class MoodViewSet(viewsets.ViewSet):
             "songs": SongSerializer(songs, many=True).data,
             "cached": False
         })
-
-
 # -------------------------
 # Song ViewSet
 # -------------------------
@@ -237,26 +228,20 @@ class SongViewSet(viewsets.ViewSet):
 
         song = self.get_object(pk)
         return Response(SongSerializer(song).data)
-
-    # 🔥 Interaction API (IMPORTANT)
+    #  Interaction API (IMPORTANT)
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def interact(self, req, pk=None):
-
         song = self.get_object(pk)
         tenant = get_tenant(req)
-
         action_type = req.data.get("action")
-
         if action_type not in ["play", "skip", "like"]:
             return Response({"error": "Invalid action"}, status=400)
-
         session = (
             MoodSession.objects
             .filter(user=req.user, tenant=tenant)
             .order_by("-generated_at")
             .first()
         )
-
         if not session:
             return Response({"error": "No active session"}, status=400)
 

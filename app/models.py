@@ -2,6 +2,9 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
 # -------------------------
 # Tenant
 # -------------------------
@@ -25,22 +28,19 @@ class TenantModel(models.Model):
 # -------------------------
 # Profile (User → Tenant+ SuperAdmin)
 # -------------------------
-from django.db import models
-from django.contrib.auth.models import User
-
-
-
 class Profile(models.Model):
     ROLE_CHOICES = (
         ("superadmin", "SuperAdmin"),
         ("admin", "Tenant Admin"),
         ("user", "User"),
     )
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         related_name="profile"
     )
+
     tenant = models.ForeignKey(
         "Tenant",
         on_delete=models.CASCADE,
@@ -49,25 +49,46 @@ class Profile(models.Model):
         null=True,
         blank=True
     )
+
     role = models.CharField(
         max_length=20,
         choices=ROLE_CHOICES,
         default="user"
     )
+
+    #  Subscription field
     premium_until = models.DateTimeField(null=True, blank=True)
+
     def save(self, *args, **kwargs):
         if self.role == "superadmin":
             self.tenant = None
+
         if self.role in ["admin", "user"] and not self.tenant:
             raise ValueError("Admin/User must belong to a tenant")
+
         super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.user.username} - {self.role}"
+
+    #  Check if premium is active
     @property
     def is_premium_active(self):
         if self.premium_until:
             return self.premium_until > timezone.now()
         return False
+
+
+# -------------------------
+# SIGNAL: Auto-create Profile
+# -------------------------
+
+
+
+@receiver(post_save, sender=User)
+def create_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)
 # -------------------------
 # Mood (GLOBAL)
 # -------------------------
@@ -84,7 +105,6 @@ class Mood(models.Model):
     def __str__(self):
         return self.name
 
-
 # -------------------------
 # Artist (GLOBAL)
 # -------------------------
@@ -96,55 +116,43 @@ class Artist(models.Model):
 
     def __str__(self):
         return self.name
-
-
 # -------------------------
 # Song (GLOBAL)
 # -------------------------
 class Song(models.Model):
-
     source = models.CharField(
         max_length=50,
         default="spotify"
     )
-
     external_id = models.CharField(
         max_length=100,
         unique=True,
         db_index=True
     )
-
     title = models.CharField(max_length=200)
 
     artists = models.ManyToManyField(
         Artist,
         related_name="songs"
     )
-
     valence = models.FloatField(
         null=True,
         db_index=True
     )
-
     energy = models.FloatField(
         null=True,
         db_index=True
     )
-
     duration_seconds = models.IntegerField(
         null=True,
         blank=True
     )
-
     is_available = models.BooleanField(
         default=True,
         db_index=True
     )
-
     play_count = models.PositiveIntegerField(default=0)
-
     last_synced = models.DateTimeField(auto_now=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

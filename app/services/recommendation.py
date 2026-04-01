@@ -33,7 +33,7 @@ def emotional_progression(mood):
         valence__lte=base_valence + 0.4,
         energy__gte=base_energy,
         is_available=True
-    ).order_by("-play_count")
+    ).order_by("-play_count")  
 
     song = pick_song(uplift_query, selected_ids)
     if song:

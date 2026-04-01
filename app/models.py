@@ -58,19 +58,16 @@ class Profile(models.Model):
 
     #  Subscription field
     premium_until = models.DateTimeField(null=True, blank=True)
-
     def save(self, *args, **kwargs):
         if self.role == "superadmin":
             self.tenant = None
-
+        if not self.pk and self.role in ["admin", "user"] and not self.tenant:
+             pass
         if self.role in ["admin", "user"] and not self.tenant:
             raise ValueError("Admin/User must belong to a tenant")
-
         super().save(*args, **kwargs)
-
     def __str__(self):
         return f"{self.user.username} - {self.role}"
-
     #  Check if premium is active
     @property
     def is_premium_active(self):

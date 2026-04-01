@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.core.exceptions import ValidationError
 
 # -------------------------
 # Tenant
@@ -58,14 +59,21 @@ class Profile(models.Model):
 
     #  Subscription field
     premium_until = models.DateTimeField(null=True, blank=True)
+    def clean(self):
+        if self.role == "superadmin" and self.tenant:
+            raise ValidationError("Superadmin cannot have tenant")
+
+        if self.role in ["admin", "user"] and not self.tenant:
+            raise ValidationError("Admin/User must belong to a tenant")
+
     def save(self, *args, **kwargs):
+        # normalize only (no validation here)
         if self.role == "superadmin":
             self.tenant = None
-        if not self.pk and self.role in ["admin", "user"] and not self.tenant:
-             pass
-        if self.role in ["admin", "user"] and not self.tenant:
-            raise ValueError("Admin/User must belong to a tenant")
+
+        self.full_clean()
         super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.user.username} - {self.role}"
     #  Check if premium is active
@@ -80,8 +88,6 @@ class Profile(models.Model):
 # SIGNAL: Auto-create Profile
 # -------------------------
 
-
-
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):
     if created:
@@ -90,13 +96,9 @@ def create_profile(sender, instance, created, **kwargs):
 # Mood (GLOBAL)
 # -------------------------
 class Mood(models.Model):
-
     name = models.CharField(max_length=50, unique=True)
-
     description = models.TextField(blank=True)
-
     valence = models.FloatField(db_index=True)
-
     energy = models.FloatField(db_index=True)
 
     def __str__(self):
@@ -159,7 +161,6 @@ class Song(models.Model):
 
     def __str__(self):
         return self.title
-
 
 # -------------------------
 # Memory (Tenant Scoped)

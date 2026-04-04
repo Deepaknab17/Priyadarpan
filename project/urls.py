@@ -28,10 +28,12 @@ urlpatterns = [
     path('', include(router.urls)),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path("signup/", TenantSignupView.as_view())
     path('api/test/', protected_test),
     path('api/register/', register_user),
     path('api/spotify/login/', spotify_login),
     path('api/spotify/callback/', spotify_callback),
     path("test-spotify/", test_spotify_tracks),
     path("payments/", include("payments.urls")),
+    
 ]

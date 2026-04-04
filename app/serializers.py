@@ -2,37 +2,39 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Memory, Mood, Song,Tenant
 from .services.user_service import create_user_with_profile
+from .services.tenant_service import create_tenant_with_admin
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
-    role = serializers.ChoiceField(choices=["admin", "user", "superadmin"])
-    tenant_id = serializers.IntegerField(required=False)
+    class RegisterSerializer(serializers.ModelSerializer):
+        password = serializers.CharField(write_only=True)
+        role = serializers.ChoiceField(choices=["admin", "user"])
 
-    class Meta:
-        model = User
-        fields = ("username", "email", "password", "role", "tenant_id")
+        class Meta:
+            model = User
+            fields = ("username", "email", "password", "role")
 
-    def create(self, validated_data):
-        role = validated_data.pop("role")
-        tenant_id = validated_data.pop("tenant_id", None)
+        def create(self, validated_data):
+            request = self.context["request"]
 
-        tenant = None
-        if tenant_id:
-            try:
-                tenant = Tenant.objects.get(id=tenant_id)
-            except Tenant.DoesNotExist:
-                raise serializers.ValidationError("Invalid tenant")
+            #  Ensures only admin can create users
+            if request.user.profile.role != "admin":
+                raise serializers.ValidationError("Only admins can create users")
 
-        user = create_user_with_profile(
-            username=validated_data["username"],
-            email=validated_data["email"],
-            password=validated_data["password"],
-            role=role,
-            tenant=tenant
-        )
+            role = validated_data.pop("role")
 
-        return user
+            # Tenant comes from admin
+            tenant = request.user.profile.tenant
+
+            user = create_user_with_profile(
+                username=validated_data["username"],
+                email=validated_data["email"],
+                password=validated_data["password"],
+                role=role,
+                tenant=tenant
+            )
+
+            return user
 
 
 class MoodSerializer(serializers.ModelSerializer):
@@ -87,3 +89,18 @@ class MemorySerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = ("created_at", "updated_at")
+
+class TenantSignupSerializer(serializers.Serializer):
+    tenant_name = serializers.CharField()
+    username = serializers.CharField()
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def create(self, validated_data):
+        user = create_tenant_with_admin(
+            tenant_name=validated_data["tenant_name"],
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=validated_data["password"]
+        )
+        return user

@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework import viewsets, status
 from django.shortcuts import redirect, get_object_or_404
 from django.http import JsonResponse
@@ -10,8 +11,9 @@ import requests, urllib.parse
 from django.conf import settings
 from app.services.recomendation_service import generate_session_recommendations
 from .models import Memory, Mood, Song, MoodSession, SessionRecommendation, UserSongInteraction
-from .serializers import RegisterSerializer, MemorySerializer, MoodSerializer, SongSerializer
+from .serializers import RegisterSerializer, MemorySerializer, MoodSerializer, SongSerializer,TenantSignupSerializer
 from .services.mood_engine import get_mood_response
+ 
 
 
 # -------------------------
@@ -285,3 +287,17 @@ def test_spotify_tracks(request):
         "count": len(tracks),
         "tracks": tracks[:5]
     })
+
+class TenantSignupView(APIView):
+
+    def post(self, request):
+        serializer = TenantSignupSerializer(data=request.data)
+
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(
+                {"message": "Tenant and admin created successfully"},
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

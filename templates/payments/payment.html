@@ -1,6 +1,6 @@
 <!-- templates/payments/payment.html -->
 
-<form method="POST">
+<form method="POST" action="{% url 'create_payment' %}">
   {% csrf_token %}
   <button type="submit">Pay ₹499</button>
 </form>

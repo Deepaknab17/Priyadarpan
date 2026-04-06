@@ -9,23 +9,19 @@ class RegisterSerializer(serializers.ModelSerializer):
     class RegisterSerializer(serializers.ModelSerializer):
         password = serializers.CharField(write_only=True)
         role = serializers.ChoiceField(choices=["admin", "user"])
-
         class Meta:
             model = User
             fields = ("username", "email", "password", "role")
-
         def create(self, validated_data):
             request = self.context["request"]
-
             #  Ensures only admin can create users
+            
             if request.user.profile.role != "admin":
                 raise serializers.ValidationError("Only admins can create users")
-
             role = validated_data.pop("role")
 
             # Tenant comes from admin
             tenant = request.user.profile.tenant
-
             user = create_user_with_profile(
                 username=validated_data["username"],
                 email=validated_data["email"],

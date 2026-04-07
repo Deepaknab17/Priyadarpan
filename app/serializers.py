@@ -15,7 +15,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         def create(self, validated_data):
             request = self.context["request"]
             #  Ensures only admin can create users
-            
+         
             if request.user.profile.role != "admin":
                 raise serializers.ValidationError("Only admins can create users")
             role = validated_data.pop("role")
@@ -29,9 +29,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                 role=role,
                 tenant=tenant
             )
-
             return user
-
 
 class MoodSerializer(serializers.ModelSerializer):
     class Meta:
@@ -57,7 +55,7 @@ class SongSerializer(serializers.ModelSerializer):
 
 
 class MemorySerializer(serializers.ModelSerializer):
-
+    
     song = SongSerializer(read_only=True)
 
     song_id = serializers.PrimaryKeyRelatedField(

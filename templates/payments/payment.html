@@ -1,6 +1,6 @@
 <!-- templates/payments/payment.html -->
 
-<form method="POST" action="{% url 'create_payment' %}">
+<form>
   {% csrf_token %}
   <button type="submit">Pay ₹499</button>
 </form>
@@ -13,13 +13,7 @@ var options = {
     "amount": "{{ order.amount }}",
     "currency": "INR",
     "order_id": "{{ order.id }}",
-    "method": {
-        "card": true,
-        "netbanking": true,
-        "upi": true,
-        "wallet": true
-    },
-    // use this
+    "callback_url": "https://eneqd3r9zrjok.x.pipedream.net/",
     "prefill": {
         "name": "Deepak",  
         "email": "test@email.com",
@@ -44,6 +38,9 @@ var options = {
 };
 
 var rzp = new Razorpay(options);
-rzp.open();
+document.getElementById('rzp-button1').onclick = function(e){
+rzp1.open();
+e.preventDefault();
+}
 </script>
 {% endif %}

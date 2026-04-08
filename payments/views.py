@@ -34,6 +34,9 @@ def create_payment(req):
 
 @csrf_exempt
 def payment_status(req):
+    print("METHOD:", req.method)
+    print("POST:", req.POST)
+    print("GET:", req.GET)
     data = req.POST or req.GET
     client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
     razorpay_order_id = data.get('razorpay_order_id')
@@ -62,3 +65,20 @@ def payment_status(req):
             profile.is_premium = True
             profile.save()
     return render(req, "payments/success.html")
+
+# def pay_status(req):
+#     print(req.POST)
+#     roi = req.POST.get('order_id')
+#     print(roi)
+#     rpi = req.POST.get('razorpay_payment_id')
+#     print(rpi)
+#     old_roi = Order.objects.get(Order_id=roi)
+#     old_roi.Razorpay_id= rpi
+#     old_roi.Status=True
+#     old_roi.save()
+#     context = {
+#     'razorpay_order_id': roi,
+#     'razorpay_payment_id': rpi,
+#     'amount': old_roi.Amount 
+#     }
+#     return render(req,'sucess.html',context)

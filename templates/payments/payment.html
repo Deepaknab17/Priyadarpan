@@ -1,46 +1,41 @@
-<!-- templates/payments/payment.html -->
-
-<form>
-  {% csrf_token %}
-  <button type="submit">Pay ₹499</button>
+<form action="{% url 'create_payment' %}" method="post">
+    {% csrf_token %}
+    <button id="rzp-button1" type="button">Pay 499</button>
 </form>
 
-{% if order %}
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
 <script>
 var options = {
-    "key": "{{ key }}",
-    "amount": "{{ order.amount }}",
+    "key": "rzp_test_pr99iascS1WRtU",
+    "amount": "{{ amount }}",
     "currency": "INR",
-    "order_id": "{{ order.id }}",
-    "callback_url": "https://eneqd3r9zrjok.x.pipedream.net/",
+    "name": "PriyaDarpan",
+    "description": "Test Transaction",
+    "order_id": "{{ id }}",
+    "redirect": true,
+    //  keeping YOUR style
+    "callback_url": "http://127.0.0.1:8000{% url 'payment_status' %}",
+
     "prefill": {
-        "name": "Deepak",  
-        "email": "test@email.com",
-        "contact": "9999999999"
+        "name": "Deepak",
+        "email": "deepak@example.com",
+        "contact": "9000090000"
     },
-    "handler": function (response){
-        var form = document.createElement('form');
-        form.method = "POST";
-        form.action = "/payments/status/";
 
-        ["razorpay_payment_id", "razorpay_order_id", "razorpay_signature"].forEach(field => {
-            var input = document.createElement("input");
-            input.type = "hidden";
-            input.name = field;
-            input.value = response[field];
-            form.appendChild(input);
-        });
+    "notes": {
+        "address": "Razorpay Corporate Office"
+    },
 
-        document.body.appendChild(form);
-        form.submit();
+    "theme": {
+        "color": "#3399cc"
     }
 };
 
-var rzp = new Razorpay(options);
+var rzp1 = new Razorpay(options);
+
 document.getElementById('rzp-button1').onclick = function(e){
-rzp1.open();
-e.preventDefault();
+    rzp1.open(); 
+    e.preventDefault();
 }
 </script>
-{% endif %}

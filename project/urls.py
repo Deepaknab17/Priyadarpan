@@ -37,4 +37,5 @@ urlpatterns = [
     path("payments/", include("payments.urls")),
 ]
     
-
+# "key": "rzp_test_pr99iascS1WRtU",
+#   

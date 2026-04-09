@@ -174,21 +174,18 @@ class MoodViewSet(viewsets.ViewSet):
                 rec.song
                 for rec in session.recommendations.all().order_by("rank")
             ]
-
             return Response({
                 "mood": mood.name,
                 "message": session.response,
                 "songs": SongSerializer(songs, many=True).data,
                 "cached": True
             })
-
         #  Generate new session
         session, recs = generate_session_recommendations(
             user=req.user,
             mood=mood,
             tenant=tenant
         )
-
         songs = [rec.song for rec in recs]
 
         response_text = get_mood_response(mood.name)

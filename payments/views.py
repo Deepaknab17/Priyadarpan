@@ -9,41 +9,41 @@ from .models import Payment
 
 # @login_required
 def create_payment(req):
-    if req.method == "POST":
-        amount = 499 * 100  # ₹499
+    import razorpay
+    from django.conf import settings
+    from .models import Payment
 
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
+    amount = 499 * 100
 
-        order = client.order.create({
-            "amount": amount,
-            "currency": "INR",
-            "receipt": f"user_{req.user.id}"
-        })
+    client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
 
-        Payment.objects.create(
-            user=req.user if req.user.is_authenticated else None,
-            amount=amount,
-            order_id=order['id']
-        )
+    order = client.order.create({
+        "amount": amount,
+        "currency": "INR",
+        "receipt": f"user_{req.user.id if req.user.is_authenticated else 'guest'}"
+    })
 
-        return render(req, "payments/payment.html", {
-    "order": order,
-    "key": settings.RAZORPAY_KEY
-})
-    return render(req, "payments/payment.html")
+    Payment.objects.create(
+        user=req.user if req.user.is_authenticated else None,
+        amount=amount,
+        razorpay_order_id=order['id']
+    )
 
+    return render(req, "payments/payment.html", {
+        "id": order['id'],  
+        "amount": amount,
+        "key": settings.RAZORPAY_KEY
+    })
 @csrf_exempt
 def payment_status(req):
-    print("METHOD:", req.method)
     print("POST:", req.POST)
-    print("GET:", req.GET)
     data = req.POST or req.GET
-    client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
     razorpay_order_id = data.get('razorpay_order_id')
     razorpay_payment_id = data.get('razorpay_payment_id')
     razorpay_signature = data.get('razorpay_signature')
     if not all([razorpay_order_id, razorpay_payment_id, razorpay_signature]):
         return render(req, "payments/failed.html", {"error": "Missing data"})
+    client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
     try:
         client.utility.verify_payment_signature({
             'razorpay_order_id': razorpay_order_id,
@@ -52,8 +52,9 @@ def payment_status(req):
         })
     except razorpay.errors.SignatureVerificationError:
         return render(req, "payments/failed.html", {"error": "Signature failed"})
+
     try:
-        payment = Payment.objects.get(order_id=razorpay_order_id)
+        payment = Payment.objects.get(razorpay_order_id=razorpay_order_id)
     except Payment.DoesNotExist:
         return render(req, "payments/failed.html", {"error": "Order not found"})
     payment.razorpay_payment_id = razorpay_payment_id
@@ -65,7 +66,6 @@ def payment_status(req):
             profile.is_premium = True
             profile.save()
     return render(req, "payments/success.html")
-
 # def pay_status(req):
 #     print(req.POST)
 #     roi = req.POST.get('order_id')

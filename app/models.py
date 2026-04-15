@@ -1,9 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
-from datetime import timedelta
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 
 
@@ -39,20 +36,31 @@ class Profile(models.Model):
         ("user", "User"),
     )
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="profile"
+    )
 
     tenant = models.ForeignKey(
         Tenant,
         on_delete=models.CASCADE,
-        related_name="users",
+        related_name="profiles",
         null=True,
         blank=True
     )
 
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="user")
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default="user"
+    )
 
-    # 🔥 Premium system (IMPORTANT)
-    premium_until = models.DateTimeField(null=True, blank=True)
+    premium_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True  # 🔥 faster premium queries
+    )
 
     def clean(self):
         if self.role == "superadmin" and self.tenant:
@@ -77,16 +85,7 @@ class Profile(models.Model):
 
 
 # -------------------------
-# Auto Profile
-# -------------------------
-@receiver(post_save, sender=User)
-def create_profile(sender, instance, created, **kwargs):
-    if created:
-        Profile.objects.create(user=instance)
-
-
-# -------------------------
-# Artist
+# Artist (GLOBAL)
 # -------------------------
 class Artist(models.Model):
     name = models.CharField(max_length=200, unique=True)
@@ -96,7 +95,7 @@ class Artist(models.Model):
 
 
 # -------------------------
-# Mood
+# Mood (GLOBAL)
 # -------------------------
 class Mood(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -108,21 +107,45 @@ class Mood(models.Model):
 
 
 # -------------------------
-# Song (UPDATED 🔥)
+# Invite (TENANT CONTROL)
+# -------------------------
+class Invite(models.Model):
+    email = models.EmailField()
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
+    token = models.CharField(max_length=100, unique=True)
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("email", "tenant")
+
+    def is_expired(self):
+        from datetime import timedelta
+        return self.created_at < timezone.now() - timedelta(days=2)
+
+    def __str__(self):
+        return f"{self.email} → {self.tenant.name}"
+
+
+# -------------------------
+# Song (GLOBAL CATALOG)
 # -------------------------
 class Song(models.Model):
     title = models.CharField(max_length=200)
 
     artists = models.ManyToManyField(Artist, related_name="songs")
 
-    external_id = models.CharField(max_length=100, unique=True, db_index=True)
+    external_id = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True
+    )
 
     valence = models.FloatField(null=True, db_index=True)
     energy = models.FloatField(null=True, db_index=True)
 
     duration_seconds = models.IntegerField(null=True, blank=True)
 
-    # 🔥 IMPORTANT ADDITIONS
     is_premium = models.BooleanField(default=False)
     is_available = models.BooleanField(default=True)
 
@@ -135,7 +158,7 @@ class Song(models.Model):
 
 
 # -------------------------
-# Memory (Tenant Scoped)
+# Memory (TENANT SCOPED)
 # -------------------------
 class Memory(TenantModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -149,7 +172,7 @@ class Memory(TenantModel):
 
 
 # -------------------------
-# User Interaction
+# User Interaction (TENANT SCOPED)
 # -------------------------
 class UserSongInteraction(TenantModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -167,7 +190,7 @@ class UserSongInteraction(TenantModel):
 
 
 # -------------------------
-# Mood Session
+# Mood Session (TENANT SCOPED)
 # -------------------------
 class MoodSession(TenantModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -180,17 +203,16 @@ class MoodSession(TenantModel):
 
 
 # -------------------------
-# Recommendations
+# Recommendations (TENANT SAFE VIA SESSION)
 # -------------------------
 class SessionRecommendation(models.Model):
-    session = models.ForeignKey(MoodSession, on_delete=models.CASCADE, related_name="recommendations")
+    session = models.ForeignKey(
+        MoodSession,
+        on_delete=models.CASCADE,
+        related_name="recommendations"
+    )
     song = models.ForeignKey(Song, on_delete=models.CASCADE)
     rank = models.IntegerField()
 
     class Meta:
         unique_together = ("session", "rank")
-
-
-# -------------------------
-# Payment (FINAL 🔥)
-# -------------------------

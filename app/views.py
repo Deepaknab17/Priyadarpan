@@ -12,19 +12,15 @@ from django.contrib.auth import authenticate, login
 import requests, urllib.parse
 from datetime import timedelta
 import logging
-
 from django.conf import settings
 from django.core.cache import cache
-
 from .models import Memory, Mood, Song, MoodSession,UserSongInteraction, Profile, Tenant
-
-
 from .serializers import MemorySerializer, MoodSerializer,SongSerializer, TenantSignupSerializer
 # SERVICES
-from app.services.recommendation import generate_session_recommendations
+from app.services.recomendation_service import generate_session_recommendations
 from app.services.spotify_service import search_tracks
 from app.services.ingestion import ingest_playlist
-from app.services.spotify_service  import activate_premium
+from app.services.subscription_service  import activate_premium
 from app.services.user_service import create_user_with_profile
 from .services.mood_engine import get_mood_response
 

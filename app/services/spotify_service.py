@@ -6,6 +6,7 @@ SPOTIFY_API_BASE = "https://api.spotify.com/v1"
 def get_playlist_tracks(access_token, playlist_id):
     """
     Fetch tracks from a Spotify playlist
+    
     """
 
     url = f"{SPOTIFY_API_BASE}/playlists/{playlist_id}/tracks"

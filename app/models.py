@@ -115,14 +115,11 @@ class Invite(models.Model):
     token = models.CharField(max_length=100, unique=True)
     used = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         unique_together = ("email", "tenant")
-
     def is_expired(self):
         from datetime import timedelta
         return self.created_at < timezone.now() - timedelta(days=2)
-
     def __str__(self):
         return f"{self.email} → {self.tenant.name}"
 
@@ -132,27 +129,16 @@ class Invite(models.Model):
 # -------------------------
 class Song(models.Model):
     title = models.CharField(max_length=200)
-
     artists = models.ManyToManyField(Artist, related_name="songs")
-
-    external_id = models.CharField(
-        max_length=100,
-        unique=True,
-        db_index=True
-    )
-
+    preview_url = models.URLField(null=True, blank=True)
+    external_id = models.CharField(max_length=100,unique=True,db_index=True )
     valence = models.FloatField(null=True, db_index=True)
     energy = models.FloatField(null=True, db_index=True)
-
     duration_seconds = models.IntegerField(null=True, blank=True)
-
     is_premium = models.BooleanField(default=False)
     is_available = models.BooleanField(default=True)
-
     play_count = models.PositiveIntegerField(default=0)
-
     created_at = models.DateTimeField(auto_now_add=True)
-
     def __str__(self):
         return self.title
 
@@ -164,10 +150,8 @@ class Memory(TenantModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     song = models.ForeignKey(Song, on_delete=models.CASCADE)
     mood = models.ForeignKey(Mood, null=True, blank=True, on_delete=models.SET_NULL)
-
     note = models.TextField()
     dedicated_to = models.CharField(max_length=200, blank=True)
-
     updated_at = models.DateTimeField(auto_now=True)
 
 
@@ -178,13 +162,10 @@ class UserSongInteraction(TenantModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     song = models.ForeignKey(Song, on_delete=models.CASCADE)
     mood = models.ForeignKey(Mood, on_delete=models.CASCADE)
-
     play_count = models.PositiveIntegerField(default=0)
     skipped_count = models.PositiveIntegerField(default=0)
     liked = models.BooleanField(default=False)
-
     last_played = models.DateTimeField(null=True, blank=True)
-
     class Meta:
         unique_together = ("tenant", "user", "song", "mood")
 
@@ -195,10 +176,8 @@ class UserSongInteraction(TenantModel):
 class MoodSession(TenantModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     mood = models.ForeignKey(Mood, on_delete=models.CASCADE)
-
     input_text = models.TextField(null=True, blank=True)
     response = models.TextField(null=True, blank=True)
-
     generated_at = models.DateTimeField(auto_now_add=True)
 
 

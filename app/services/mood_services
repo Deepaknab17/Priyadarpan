@@ -1,0 +1,34 @@
+def run_mood_experience(user, mood):
+    session, recs = generate_session_recommendations(
+        user=user,
+        mood=mood
+    )
+
+    if not recs:
+        raise ValueError("No recommendations")
+
+    songs = []
+    seen = set()
+
+    for r in recs:
+        if r.song and r.song.id not in seen:
+            songs.append(r.song)
+            seen.add(r.song.id)
+
+    response_text = get_mood_response(mood.name)
+
+    session.response = response_text
+    session.save()
+
+    return {
+        "mood": mood.name,
+        "message": response_text,
+        "songs": [
+            {
+                "id": s.id,
+                "title": s.title,
+                "preview_url": s.preview_url
+            }
+            for s in songs
+        ]
+    }

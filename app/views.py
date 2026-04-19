@@ -1,14 +1,11 @@
-
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import viewsets
-
 from django.shortcuts import redirect, get_object_or_404, render
 from django.utils import timezone
 from django.contrib.auth import authenticate, login
-
 import requests, urllib.parse
 from datetime import timedelta
 import logging
@@ -169,6 +166,7 @@ def spotify_callback(request):
     request.session["access_token"] = data.get("access_token")
     request.session["refresh_token"] = data.get("refresh_token")
 
+
     return Response({"message": "Spotify connected"})
 
 
@@ -241,17 +239,16 @@ def list_songs(req):
 def play_song(req, song_id):
     song = get_object_or_404(Song, id=song_id)
 
-    profile = req.user.profile if safe_user(req) else None
+    profile = getattr(req.user, "profile", None) if req.user.is_authenticated else None
 
     if song.is_premium:
-        if not profile:
+        if not profile or (
+            profile.role not in ["admin", "superadmin"] and not is_premium(profile)
+        ):
             return Response({"error": "Premium required"}, status=403)
 
-        if profile.role not in ["admin", "superadmin"] and not is_premium(profile):
-            return Response({"error": "Premium required"}, status=403)
-
-    return Response({"song": song.title})
-
+    return Response({"song": song.title,"preview_url": song.preview_url,"spotify_url": f"https://open.spotify.com/track/{song.external_id}"})
+    
 
 # -------------------------
 # MEMORY
@@ -279,24 +276,22 @@ class MemoryViewSet(viewsets.ViewSet):
 # -------------------------
 
 class MoodViewSet(viewsets.ViewSet):
-
     def list(self, req):
         moods = Mood.objects.all()
         return Response(MoodSerializer(moods, many=True).data)
-
     def retrieve(self, req, pk=None):
         mood = get_object_or_404(Mood, pk=pk)
         return Response(MoodSerializer(mood).data)
-
     @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
     def experience(self, req, pk=None):
-
         key = f"rl:{req.user.id}:experience"
         if not rate_limit(key):
             return Response({"error": "Too many requests"}, status=429)
 
         mood = get_object_or_404(Mood, pk=pk)
         tenant = get_tenant(req)
+        if not tenant:
+            return Response({"error": "Tenant not found"}, status=400)
 
         try:
             session, recs = generate_session_recommendations(
@@ -310,7 +305,7 @@ class MoodViewSet(viewsets.ViewSet):
         if not recs:
             return Response({"error": "No recommendations"}, status=400)
 
-        songs = [r.song for r in recs]
+        songs = list({r.song for r in recs if r.song})
 
         response_text = get_mood_response(mood.name)
 

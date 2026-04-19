@@ -3,47 +3,64 @@ from app.services.recommendation import emotional_progression
 
 # ssession_recomendation
 def generate_session_recommendations(user, mood):
-    tenant = user.profile.tenant
-    # create session with tenant
+
+    profile = getattr(user, "profile", None)
+    if not profile or not profile.tenant:
+        raise ValueError("User has no tenant")
+
+    tenant = profile.tenant
+
     session = MoodSession.objects.create(
         tenant=tenant,
         user=user,
         mood=mood
     )
-    # generate songs
+
     songs = emotional_progression(mood, tenant)
+    if not songs:
+        return session, []
 
-#  Fetch user interactions
     interactions = UserSongInteraction.objects.filter(
-    user=user,
-    tenant=tenant,
-    mood=mood
-)
-    interaction_map = {
-    i.song_id: i for i in interactions
-}
+        user=user,
+        tenant=tenant,
+        mood=mood
+    )
 
-#  scoring function
+    interaction_map = {i.song_id: i for i in interactions}
+
     def score(song):
         interaction = interaction_map.get(song.id)
         if not interaction:
             return 0
-        score = 0
-        score += interaction.play_count * 2
-        score += interaction.liked * 5
-        score -= interaction.skipped_count * 3
 
-        return score
+        s = 0
+        s += interaction.play_count * 2
+        s -= interaction.skipped_count * 3
 
-#  Apply ranking ON TOP of emotional progression
-    songs = sorted(songs, key=lambda s: score(s) + (10 - songs.index(s)), reverse=True)
+        if interaction.liked:
+            s += 5
 
-    recommendations = []
-    for rank, song in enumerate(songs, start=1):
-        rec = SessionRecommendation.objects.create(
+        return s
+
+    indexed_songs = list(enumerate(songs))
+
+    ranked = sorted(
+        indexed_songs,
+        key=lambda pair: score(pair[1]) + (10 - pair[0]),
+        reverse=True
+    )
+
+    songs = [s for _, s in ranked]
+
+    recs = [
+        SessionRecommendation(
             session=session,
             song=song,
             rank=rank
         )
-        recommendations.append(rec)
-    return session, recommendations
+        for rank, song in enumerate(songs, start=1)
+    ]
+
+    SessionRecommendation.objects.bulk_create(recs)
+
+    return session, recs

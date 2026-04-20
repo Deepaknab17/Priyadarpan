@@ -1,8 +1,11 @@
-from app.models import MoodSession, SessionRecommendation,UserSongInteraction
+from app.models import MoodSession, SessionRecommendation, UserSongInteraction
 from app.services.recommendation import emotional_progression
 
-# ssession_recomendation
+
 def generate_session_recommendations(user, mood):
+
+    if not mood:
+        raise ValueError("Invalid mood")
 
     profile = getattr(user, "profile", None)
     if not profile or not profile.tenant:
@@ -20,6 +23,15 @@ def generate_session_recommendations(user, mood):
     if not songs:
         return session, []
 
+    # Deduplicate
+    seen = set()
+    unique_songs = []
+    for s in songs:
+        if s.id not in seen:
+            unique_songs.append(s)
+            seen.add(s.id)
+    songs = unique_songs
+
     interactions = UserSongInteraction.objects.filter(
         user=user,
         tenant=tenant,
@@ -34,23 +46,27 @@ def generate_session_recommendations(user, mood):
             return 0
 
         s = 0
-        s += interaction.play_count * 2
-        s -= interaction.skipped_count * 3
 
         if interaction.liked:
-            s += 5
+            s += 20
+
+        s += interaction.play_count * 3
+        s -= interaction.skipped_count * 5
 
         return s
+
+    def rank_value(index, song):
+        return score(song) + (10 - index)
 
     indexed_songs = list(enumerate(songs))
 
     ranked = sorted(
         indexed_songs,
-        key=lambda pair: score(pair[1]) + (10 - pair[0]),
+        key=lambda pair: rank_value(pair[0], pair[1]),
         reverse=True
     )
 
-    songs = [s for _, s in ranked]
+    songs = [s for _, s in ranked][:10]
 
     recs = [
         SessionRecommendation(

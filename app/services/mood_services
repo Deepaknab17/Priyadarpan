@@ -1,3 +1,5 @@
+from app.services.recomendation_service import generate_session_recommendations 
+from app.services.mood_engine import get_mood_response
 def run_mood_experience(user, mood):
     session, recs = generate_session_recommendations(
         user=user,
@@ -15,13 +17,14 @@ def run_mood_experience(user, mood):
             songs.append(r.song)
             seen.add(r.song.id)
 
-    response_text = get_mood_response(mood.name)
+    response_text = get_mood_response(getattr(mood, "name", ""))
 
     session.response = response_text
     session.save()
 
     return {
         "mood": mood.name,
+        "session_id": session.id,
         "message": response_text,
         "songs": [
             {

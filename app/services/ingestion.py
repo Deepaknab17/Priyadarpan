@@ -28,8 +28,8 @@ def ingest_playlist(access_token, playlist_id):
 
             features = audio_features[track["id"]]
 
-            song.valence = features["valence"]
-            song.energy = features["energy"]
+            song.valence = features.get("valence", 0)
+            song.energy = features.get("energy", 0)
 
             song.save(update_fields=["valence", "energy"])
 
@@ -40,3 +40,5 @@ def ingest_playlist(access_token, playlist_id):
             )
 
             song.artists.add(artist)
+
+        return len(tracks)

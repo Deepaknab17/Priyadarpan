@@ -270,7 +270,6 @@ class MemoryViewSet(viewsets.ViewSet):
 
         return Response(serializer.errors, status=400)
 
-
 # -------------------------
 # MOOD SYSTEM
 # -------------------------
@@ -284,7 +283,8 @@ class MoodViewSet(viewsets.ViewSet):
         return Response(MoodSerializer(mood).data)
     @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
     def experience(self, req, pk=None):
-        key = f"rl:{req.user.id}:experience"
+        key = f"rl:{req.user.id}:{tenant.id}:experience"
+        print(key)
         if not rate_limit(key):
             return Response({"error": "Too many requests"}, status=429)
 
@@ -305,7 +305,7 @@ class MoodViewSet(viewsets.ViewSet):
         if not recs:
             return Response({"error": "No recommendations"}, status=400)
 
-        songs = list({r.song for r in recs if r.song})
+        songs = [r.song for r in recs if r.song]
 
         response_text = get_mood_response(mood.name)
 

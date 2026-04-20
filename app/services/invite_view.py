@@ -17,7 +17,7 @@ def create_invite(req):
         return Response({"error": "Unauthorized"}, status=403)
 
     email = req.POST.get("email")
-    email = email.strip().lower()
+    email = (req.POST.get("email") or "").strip().lower()
 
     if not email:
         return Response({"error": "Email required"}, status=400)
@@ -63,11 +63,16 @@ def signup_with_invite(req):
         return render(req, "error.html", {"error": "Invite expired"})
 
     if req.method == "POST":
-        username = req.POST.get("username").strip()
-        email = req.POST.get("email").strip().lower()
+        username = (req.POST.get("username") or "").strip()
+        email = (req.POST.get("email") or "").strip().lower()
         password = req.POST.get("password")
+        if not username or not password:
+            return render(req, "signup.html", {
+                "error": "Username and password required",
+                 "token": token
+    })
 
-        # 🔥 email must match invite
+        #  email must match invite
         if email != invite.email:
             return render(req, "signup.html", {
                 "error": "Email does not match invite",

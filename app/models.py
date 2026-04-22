@@ -2,7 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-
+import uuid
+from datetime import timedelta
 
 # -------------------------
 # Tenant
@@ -195,3 +196,15 @@ class SessionRecommendation(models.Model):
 
     class Meta:
         unique_together = ("session", "rank")
+
+class PasswordResetToken(models.Model):
+    email = models.EmailField()
+    token = models.UUIDField(default=uuid.uuid4, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used = models.BooleanField(default=False)
+
+    def is_expired(self):
+        return self.created_at < timezone.now() - timedelta(hours=1)
+
+    def __str__(self):
+        return f"{self.email} - {self.token}"

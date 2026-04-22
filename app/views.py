@@ -1,5 +1,5 @@
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action,api_view,permission_classes
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import viewsets
@@ -7,12 +7,13 @@ from django.shortcuts import redirect, get_object_or_404, render
 from django.utils import timezone
 from django.contrib.auth import authenticate, login
 import requests, urllib.parse
-from datetime import timedelta
+from datetime import timedelta 
 import logging
 from django.conf import settings
 from django.core.cache import cache
 from .models import Memory, Mood, Song, MoodSession,UserSongInteraction, Profile, Tenant
 from .serializers import MemorySerializer, MoodSerializer,SongSerializer, TenantSignupSerializer
+from django.views.decorators.csrf import csrf_exempt
 # SERVICES
 from app.services.recomendation_service import generate_session_recommendations
 from app.services.spotify_service import search_tracks
@@ -20,6 +21,7 @@ from app.services.ingestion import ingest_playlist
 from app.services.subscription_service  import activate_premium
 from app.services.user_service import create_user_with_profile
 from .services.mood_engine import get_mood_response
+from app.services.auth_service import request_password_reset, reset_password
 
 
 # create your views here
@@ -365,3 +367,24 @@ class SongViewSet(viewsets.ViewSet):
         interaction.save()
 
         return Response({"message": "Interaction recorded"})
+    
+# mailing for password reset
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def request_reset_view(req):
+    print("DATA:", req.data)
+    email = (req.data.get("email") or "").strip().lower()
+    request_password_reset(email)
+    return Response({"message": "If email exists, reset link sent"})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password_view(req):
+    print("DATA:", req.data)
+    token = req.data.get("token")
+    password = req.data.get("password")
+    try:
+        reset_password(token, password)
+        return Response({"message": "Password updated"})
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)

@@ -37,7 +37,6 @@ def create_user_with_profile(*, username, email, password, role, tenant=None):
 
     if role == "superadmin" and tenant:
         raise ValidationError("Superadmin cannot have a tenant")
-
     # Uniqueness
     if User.objects.filter(username=username).exists():
         raise ValidationError("Username already taken")
@@ -51,12 +50,10 @@ def create_user_with_profile(*, username, email, password, role, tenant=None):
         email=email,
         password=password
     )
-
     # Create profile
     Profile.objects.create(
         user=user,
         role=role,
         tenant=tenant
     )
-
     return user

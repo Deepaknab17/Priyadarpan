@@ -53,23 +53,18 @@ class SongSerializer(serializers.ModelSerializer):
             "moods",
         )
 
-
 class MemorySerializer(serializers.ModelSerializer):
-    
     song = SongSerializer(read_only=True)
-
     song_id = serializers.PrimaryKeyRelatedField(
         queryset=Song.objects.all(),
         source="song",
         write_only=True
     )
-
     mood = serializers.PrimaryKeyRelatedField(
         queryset=Mood.objects.all(),
         required=False,
         allow_null=True
     )
-
     class Meta:
         model = Memory
         fields = (

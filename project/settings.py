@@ -171,11 +171,14 @@ RAZORPAY_SECRET = "UTDIzPGwICnAssu3Q3lk7zUi"
 
 # Email services
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'deepaknab17@gmail.com'
-EMAIL_HOST_PASSWORD = 'gylixwkhdooivzko'
+# # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# # EMAIL_HOST = 'smtp.gmail.com'
+# # EMAIL_PORT = 587
+# # EMAIL_USE_TLS = True
+# DEFAULT_FROM_EMAIL='deepaknab17@gmail.com'
+# # EMAIL_HOST_PASSWORD = 'gylixwkhdooivzko'
 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@moodmusic.com'
 

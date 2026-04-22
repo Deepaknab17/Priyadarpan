@@ -83,6 +83,9 @@ urlpatterns = [
     # -------------------------
     path('songs/list/', list_songs),
     path('songs/play/<int:song_id>/', play_song),
+    # password through email
+    path("request-reset/", request_reset_view, name="request-reset"),
+    path("reset-password/", reset_password_view, name="reset-password"),
 
 ]    
 # "key": "rzp_test_pr99iascS1WRtU",

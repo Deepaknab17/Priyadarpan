@@ -5,54 +5,54 @@ from .services.user_service import create_user_with_profile
 from .services.tenant_service import create_tenant_with_admin
 
 
-class RegisterSerializer(serializers.ModelSerializer):
-    class RegisterSerializer(serializers.ModelSerializer):
-        password = serializers.CharField(write_only=True)
-        role = serializers.ChoiceField(choices=["admin", "user"])
-        class Meta:
-            model = User
-            fields = ("username", "email", "password", "role")
-        def create(self, validated_data):
-            request = self.context["request"]
-            #  Ensures only admin can create users
-         
-            if request.user.profile.role != "admin":
-                raise serializers.ValidationError("Only admins can create users")
-            role = validated_data.pop("role")
 
-            # Tenant comes from admin
-            tenant = request.user.profile.tenant
-            user = create_user_with_profile(
-                username=validated_data["username"],
-                email=validated_data["email"],
-                password=validated_data["password"],
-                role=role,
-                tenant=tenant
-            )
-            return user
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    role = serializers.ChoiceField(choices=["admin", "user"])
+    class Meta:
+        model = User
+        fields = ("username", "email", "password", "role")
+    def create(self, validated_data):
+        request = self.context["request"]
+        #  Ensures only admin can create users
+        
+        if request.user.profile.role != "admin":
+            raise serializers.ValidationError("Only admins can create users")
+        role = validated_data.pop("role")
+
+        # Tenant comes from admin
+        tenant = request.user.profile.tenant
+        user = create_user_with_profile(
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=validated_data["password"],
+            role=role,
+            tenant=tenant
+        )
+        return user
 
 class MoodSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mood
-        fields = ("id", "name", "description", "emotional_value")
+        fields = ["id", "name", "valence", "energy"]
 
 
 class SongSerializer(serializers.ModelSerializer):
-    moods = MoodSerializer(many=True, read_only=True)
-
+    artists = serializers.StringRelatedField(many=True)
     class Meta:
         model = Song
         fields = (
             "id",
             "external_id",
             "title",
-            "artist",
-            "emotional_value",
-            "duration",
+            "artists",
+            "valence",
+            "energy",
+            "duration_seconds",
             "play_count",
-            "moods",
+            "is_premium",
+            "preview_url",
         )
-
 class MemorySerializer(serializers.ModelSerializer):
     song = SongSerializer(read_only=True)
     song_id = serializers.PrimaryKeyRelatedField(
@@ -67,13 +67,8 @@ class MemorySerializer(serializers.ModelSerializer):
     )
     class Meta:
         model = Memory
-        fields = (
-            "id",
-            "song",
-            "song_id",
-            "mood",
-            "note",
-            "dedicated_to",
+        fields = ( "id","song","song_id","mood","note","dedicated_to",
+            
             "created_at",
             "updated_at",
         )

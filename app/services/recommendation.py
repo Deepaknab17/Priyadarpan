@@ -24,7 +24,6 @@ def emotional_progression(mood, tenant=None):
 
     # STEP 1 — Emotional match (stay in same mood)
     match_query = Song.objects.filter(
-        tenant=tenant,
         valence__gte=base_valence - VALENCE_RANGE,
         valence__lte=base_valence + 0.1,
         energy__gte=base_energy - 0.2,
@@ -39,7 +38,6 @@ def emotional_progression(mood, tenant=None):
 
     # STEP 2 — Slight uplift (gentle improvement)
     uplift_query = Song.objects.filter(
-        tenant=tenant,
         valence__gt=base_valence + 0.1,
         valence__lte=base_valence + UPLIFT_RANGE,
         energy__gte=base_energy,
@@ -53,7 +51,6 @@ def emotional_progression(mood, tenant=None):
 
     # STEP 3 — Strong uplift (positive push)
     surprise_query = Song.objects.filter(
-        tenant=tenant,
         valence__gte=base_valence + UPLIFT_RANGE,
         energy__gte=base_energy,
         is_available=True
@@ -69,7 +66,6 @@ def emotional_progression(mood, tenant=None):
 
         remaining = list(
             Song.objects.filter(
-                tenant=tenant,
                 is_available=True
             ).exclude(id__in=selected_ids)
         )

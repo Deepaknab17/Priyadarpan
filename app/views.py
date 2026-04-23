@@ -131,8 +131,9 @@ class TenantSignupView(APIView):
 # -------------------------
 # SPOTIFY
 # -------------------------
-
+@api_view(['GET','POST'])
 def spotify_login(request):
+   
     params = {
         "client_id": settings.SPOTIFY_CLIENT_ID,
         "response_type": "code",
@@ -142,7 +143,7 @@ def spotify_login(request):
     url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode(params)
     return redirect(url)
 
-
+@api_view(['GET','POST'])
 def spotify_callback(request):
     code = request.GET.get("code")
 
@@ -158,7 +159,10 @@ def spotify_callback(request):
             "client_id": settings.SPOTIFY_CLIENT_ID,
             "client_secret": settings.SPOTIFY_CLIENT_SECRET,
         },
+        
     )
+    print(response.status_code)
+    print(response.text)
 
     if response.status_code != 200:
         return Response({"error": "Spotify failed"}, status=400)
@@ -171,11 +175,11 @@ def spotify_callback(request):
 
     return Response({"message": "Spotify connected"})
 
-
+@api_view(['GET'])
 def ingest_spotify_playlist(req):
 
-    if not safe_user(req) or req.user.profile.role != "superadmin":
-        return Response({"error": "Unauthorized"}, status=403)
+    # if not safe_user(req) or req.user.profile.role != "superadmin":
+    #     return Response({"error": "Unauthorized"}, status=403)
 
     key = f"rl:{req.user.id}:ingest"
     if not rate_limit(key):
@@ -230,18 +234,22 @@ def check_premium(req):
 # -------------------------
 # SONGS
 # -------------------------
-
+@api_view(['GET'])
 def list_songs(req):
     songs = Song.objects.filter(is_available=True).values(
         "id", "title", "external_id", "is_premium"
     )
     return Response(list(songs))
 
-
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def play_song(req, song_id):
     song = get_object_or_404(Song, id=song_id)
 
     profile = getattr(req.user, "profile", None) if req.user.is_authenticated else None
+    print(req.user)
+    print(song.is_premium)
+    print(profile.role if profile else None)
 
     if song.is_premium:
         if not profile or (
@@ -285,13 +293,14 @@ class MoodViewSet(viewsets.ViewSet):
         return Response(MoodSerializer(mood).data)
     @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
     def experience(self, req, pk=None):
+        tenant = get_tenant(req)
         key = f"rl:{req.user.id}:{tenant.id}:experience"
         print(key)
         if not rate_limit(key):
             return Response({"error": "Too many requests"}, status=429)
 
         mood = get_object_or_404(Mood, pk=pk)
-        tenant = get_tenant(req)
+        
         if not tenant:
             return Response({"error": "Tenant not found"}, status=400)
 
@@ -322,53 +331,145 @@ class MoodViewSet(viewsets.ViewSet):
 
 
 # -------------------------
-# SONG INTERACTION
+# SONG VIEWSET
 # -------------------------
 
 class SongViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
 
     def list(self, req):
-        songs = Song.objects.filter(is_available=True)
-        return Response(SongSerializer(songs, many=True).data)
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
-    def interact(self, req, pk=None):
-
-        song = get_object_or_404(Song, pk=pk)
-        tenant = get_tenant(req)
-
-        action_type = req.data.get("action")
-
-        if action_type not in ["play", "skip", "like"]:
-            return Response({"error": "Invalid action"}, status=400)
-
-        session = MoodSession.objects.filter(
-            user=req.user,
-            tenant=tenant
-        ).order_by("-generated_at").first()
-
-        if not session:
-            return Response({"error": "No active session"}, status=400)
-
-        interaction, _ = UserSongInteraction.objects.get_or_create(
-            user=req.user,
-            tenant=tenant,
-            song=song,
-            mood=session.mood
+        songs = Song.objects.filter(
+            is_available=True
+        )
+        return Response(
+            SongSerializer(
+                songs,
+                many=True
+            ).data
         )
 
+    @action(
+        detail=True,
+        methods=["get"]
+    )
+    def play(self, req, pk=None):
+
+        song = get_object_or_404(
+            Song,
+            pk=pk
+        )
+        profile = req.user.profile
+
+        if song.is_premium:
+            allowed_roles = [
+                "admin",
+                "superadmin"
+            ]
+            if (
+                profile.role not in allowed_roles
+                and not is_premium(profile)
+            ):
+                return Response(
+                    {
+                        "error":
+                            "Premium required"
+                    },
+                    status=403
+                )
+
+        return Response({
+            "song":
+                song.title,
+            "preview_url":
+                song.preview_url,
+            "spotify_url":
+                f"https://open.spotify.com/track/{song.external_id}"
+
+        })
+
+    @action(
+        detail=True,
+        methods=["post"]
+    )
+    def interact(self, req, pk=None):
+
+        action_type = req.data.get(
+            "action"
+        )
+        allowed_actions = [
+            "play",
+            "skip",
+            "like"
+        ]
+        if action_type not in allowed_actions:
+
+            return Response(
+                {
+                    "error":
+                        "Invalid action"
+                },
+                status=400
+            )
+
+        song = get_object_or_404(
+            Song,
+            pk=pk
+        )
+        tenant = get_tenant(req)
+        if not tenant:
+            return Response(
+                {
+                    "error":
+                        "Tenant not found"
+                },
+                status=400
+            )
+
+        session = (
+            MoodSession.objects.filter(
+                user=req.user,
+                tenant=tenant
+            )
+            .order_by("-generated_at")
+            .first()
+        )
+
+        if not session:
+            return Response(
+                {
+                    "error":
+                        "No active session"
+                },
+                status=400
+            )
+        interaction, _= (
+            UserSongInteraction.objects.get_or_create(
+                user=req.user,
+                tenant=tenant,
+                song=song,
+                mood=session.mood
+            )
+        )
         if action_type == "play":
             interaction.play_count += 1
         elif action_type == "skip":
             interaction.skipped_count += 1
         elif action_type == "like":
             interaction.liked = True
-
         interaction.save()
+        return Response({
+            "message":
+                "Interaction recorded",
+            "action":
+                action_type,
+            "song":
+                song.title
+        })
 
-        return Response({"message": "Interaction recorded"})
     
 # mailing for password reset
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def request_reset_view(req):

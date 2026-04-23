@@ -29,23 +29,19 @@ from app.services import invite_view
 
 
 urlpatterns = [
-
     # -------------------------
     # ADMIN
     # -------------------------
     path('admin/', admin.site.urls),
-
     # -------------------------
     # MAIN ROUTER (ViewSets)
     # -------------------------
     path('', include(router.urls)),
-
     # -------------------------
     # JWT AUTH
     # -------------------------
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-
     # -------------------------
     # TENANT (FIXED )
     # -------------------------
@@ -77,12 +73,7 @@ urlpatterns = [
     # PREMIUM
     # -------------------------
     path('premium/check/', check_premium),
-
-    # -------------------------
-    # BASIC SONG APIs
-    # -------------------------
-    path('songs/list/', list_songs),
-    path('songs/play/<int:song_id>/', play_song),
+    
     # password through email
     path("request-reset/", request_reset_view, name="request-reset"),
     path("reset-password/", reset_password_view, name="reset-password"),

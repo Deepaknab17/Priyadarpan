@@ -181,7 +181,6 @@ class MoodSession(TenantModel):
     response = models.TextField(null=True, blank=True)
     generated_at = models.DateTimeField(auto_now_add=True)
 
-
 # -------------------------
 # Recommendations (TENANT SAFE VIA SESSION)
 # -------------------------
@@ -193,7 +192,7 @@ class SessionRecommendation(models.Model):
     )
     song = models.ForeignKey(Song, on_delete=models.CASCADE)
     rank = models.IntegerField()
-
+    
     class Meta:
         unique_together = ("session", "rank")
 

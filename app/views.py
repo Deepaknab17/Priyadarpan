@@ -12,7 +12,7 @@ import logging
 from django.conf import settings
 from django.core.cache import cache
 from .models import Memory, Mood, Song, MoodSession,UserSongInteraction, Profile, Tenant
-from .serializers import MemorySerializer, MoodSerializer,SongSerializer, TenantSignupSerializer
+from .serializers import MemorySerializer, MoodSerializer,SongSerializer, TenantSignupSerializer,PublicSignupSerializer
 from django.views.decorators.csrf import csrf_exempt
 # SERVICES
 from app.services.recomendation_service import generate_session_recommendations
@@ -27,7 +27,6 @@ from app.services.auth_service import request_password_reset, reset_password
 # create your views here
 
 logger = logging.getLogger(__name__)
-
 
 # -------------------------
 # HELPERS
@@ -71,18 +70,14 @@ def login_view(req):
 
         if user:
             login(req, user)
-
             role = user.profile.role
-
             if role == "superadmin":
                 return redirect("superadmin_dashboard")
             elif role == "admin":
                 return redirect("admin_dashboard")
             else:
                 return redirect("user_dashboard")
-
         return render(req, "login.html", {"error": "Invalid credentials"})
-
     return render(req, "login.html")
 
 
@@ -178,8 +173,8 @@ def spotify_callback(request):
 @api_view(['GET'])
 def ingest_spotify_playlist(req):
 
-    # if not safe_user(req) or req.user.profile.role != "superadmin":
-    #     return Response({"error": "Unauthorized"}, status=403)
+    if not safe_user(req) or req.user.profile.role != "superadmin":
+        return Response({"error": "Unauthorized"}, status=403)
 
     key = f"rl:{req.user.id}:ingest"
     if not rate_limit(key):
@@ -489,3 +484,15 @@ def reset_password_view(req):
         return Response({"message": "Password updated"})
     except Exception as e:
         return Response({"error": str(e)}, status=400)
+    
+class PublicSignupView(APIView):
+    permission_classes = [AllowAny]
+    def post(self,req):
+        serializer = (PublicSignupSerializer(data=req.data))
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message":"User created"},status=201 )
+        return Response(serializer.errors,status=400 )
+            
+            
+       

@@ -88,3 +88,26 @@ class TenantSignupSerializer(serializers.Serializer):
             password=validated_data["password"]
         )
         return user
+    
+class PublicSignupSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    def create(self,validated_data): 
+        tenant = Tenant.objects.get(
+            name="Public"
+        )
+        user = create_user_with_profile(
+            username=validated_data[
+                "username"
+            ],
+            email=validated_data[
+                "email"
+            ],
+            password=validated_data[
+                "password"
+            ],
+            role="user",
+            tenant=tenant
+        )
+        return user

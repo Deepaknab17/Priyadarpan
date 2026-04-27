@@ -46,6 +46,7 @@ urlpatterns = [
     # TENANT (FIXED )
     # -------------------------
     path('tenant/signup/', TenantSignupView.as_view()),
+    path('auth/signup/', PublicSignupView.as_view()),
 
     # -------------------------
     # SPOTIFY

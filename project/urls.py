@@ -77,7 +77,7 @@ urlpatterns = [
     
     # password through email
     path("request-reset/", request_reset_view, name="request-reset"),
-    path("reset-password/", reset_password_view, name="reset-password"),
+    path("reset-password/", reset_password, name="reset-password"),
 
 ]    
 # "key": "rzp_test_pr99iascS1WRtU",

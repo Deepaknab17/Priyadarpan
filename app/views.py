@@ -49,7 +49,7 @@ def is_premium(profile):
     return profile and profile.premium_until and profile.premium_until > timezone.now()
 
 
-def rate_limit(key, limit=10, window=60):
+def rate_limit(key, limit=10, window=60): #(seconds))
     current = cache.get(key, 0)
     if current >= limit:
         return False
@@ -65,9 +65,7 @@ def login_view(req):
     if req.method == "POST":
         email = req.POST.get("email")
         password = req.POST.get("password")
-
         user = authenticate(req, username=email, password=password)
-
         if user:
             login(req, user)
             role = user.profile.role
@@ -280,6 +278,7 @@ class MemoryViewSet(viewsets.ViewSet):
 # -------------------------
 
 class MoodViewSet(viewsets.ViewSet):
+    permission_classes=[IsAuthenticated]
     def list(self, req):
         moods = Mood.objects.all()
         return Response(MoodSerializer(moods, many=True).data)
@@ -407,37 +406,20 @@ class SongViewSet(viewsets.ViewSet):
                 status=400
             )
 
-        song = get_object_or_404(
-            Song,
-            pk=pk
-        )
+        song = get_object_or_404(song,pk=pk)
         tenant = get_tenant(req)
         if not tenant:
-            return Response(
-                {
-                    "error":
-                        "Tenant not found"
-                },
-                status=400
-            )
+            return Response({"error":"No tenant found"},status=400)
 
         session = (
-            MoodSession.objects.filter(
-                user=req.user,
-                tenant=tenant
-            )
+            MoodSession.objects.filter( user=req.user,tenant=tenant)
             .order_by("-generated_at")
             .first()
         )
 
         if not session:
-            return Response(
-                {
-                    "error":
-                        "No active session"
-                },
-                status=400
-            )
+            return Response({"error":"No active session as such"},status=400)
+    
         interaction, _= (
             UserSongInteraction.objects.get_or_create(
                 user=req.user,
@@ -446,36 +428,31 @@ class SongViewSet(viewsets.ViewSet):
                 mood=session.mood
             )
         )
-        if action_type == "play":
-            interaction.play_count += 1
+        if action_type =="play":
+            interaction.play_count +=1
         elif action_type == "skip":
-            interaction.skipped_count += 1
-        elif action_type == "like":
-            interaction.liked = True
+            interaction.skipped_count +=1
+        elif action_type =="like":
+            interaction.liked =True
         interaction.save()
-        return Response({
-            "message":
-                "Interaction recorded",
-            "action":
-                action_type,
-            "song":
-                song.title
-        })
-
+        return Response({"msg":"Interaction recorded","action":action_type,"song":song.title})
     
+
 # mailing for password reset
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def request_reset_view(req):
     print("DATA:", req.data)
-    email = (req.data.get("email") or "").strip().lower()
+    logger.error("reset did not work",exc_info=True)
+    email =(req.data.get("email") or "").strip().lower()
     request_password_reset(email)
-    return Response({"message": "If email exists, reset link sent"})
+    return Response({"message":"Reset link is sent to your existing email address"})
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def reset_password_view(req):
+def reset_password(req):
+    logger.error("reset_failed",exc_info=True)
     print("DATA:", req.data)
     token = req.data.get("token")
     password = req.data.get("password")

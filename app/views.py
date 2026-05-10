@@ -49,11 +49,11 @@ def is_premium(profile):
     return profile and profile.premium_until and profile.premium_until > timezone.now()
 
 
-def rate_limit(key, limit=10, window=60): #(seconds))
-    current = cache.get(key, 0)
+def rate_limit(key,limit=10,window=60): #(seconds))
+    current=cache.get(key,0)
     if current >= limit:
         return False
-    cache.set(key, current + 1, timeout=window)
+    cache.set(key,current+1,timeout=window)
     return True
 
 
@@ -106,18 +106,14 @@ def user_dashboard(req):
 # -------------------------
 
 class TenantSignupView(APIView):
-
-    def post(self, request):
-
-        if not safe_user(request) or request.user.profile.role != "superadmin":
+    def post(self,req):
+        if not safe_user(req) or req.user.profile.role != "superadmin":
             return Response({"error": "Unauthorized"}, status=403)
 
-        serializer = TenantSignupSerializer(data=request.data)
-
+        serializer = TenantSignupSerializer(data=req.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Tenant created"}, status=201)
-
         return Response(serializer.errors, status=400)
 
 
@@ -126,7 +122,6 @@ class TenantSignupView(APIView):
 # -------------------------
 @api_view(['GET','POST'])
 def spotify_login(request):
-   
     params = {
         "client_id": settings.SPOTIFY_CLIENT_ID,
         "response_type": "code",
@@ -139,10 +134,8 @@ def spotify_login(request):
 @api_view(['GET','POST'])
 def spotify_callback(request):
     code = request.GET.get("code")
-
     if not code:
         return Response({"error": "No code"}, status=400)
-
     response = requests.post(
         "https://accounts.spotify.com/api/token",
         data={
@@ -150,40 +143,30 @@ def spotify_callback(request):
             "code": code,
             "redirect_uri": settings.SPOTIFY_REDIRECT_URI,
             "client_id": settings.SPOTIFY_CLIENT_ID,
-            "client_secret": settings.SPOTIFY_CLIENT_SECRET,
-        },
-        
-    )
-    print(response.status_code)
-    print(response.text)
+            "client_secret": settings.SPOTIFY_CLIENT_SECRET,})
+    # print(response.status_code)
+    # print(response.text)
+    logger.info("Spotify status code: %s", response.status_code)
+    logger.info("Spotify response: %s", response.text)
 
     if response.status_code != 200:
         return Response({"error": "Spotify failed"}, status=400)
-
     data = response.json()
-
     request.session["access_token"] = data.get("access_token")
     request.session["refresh_token"] = data.get("refresh_token")
-
-
     return Response({"message": "Spotify connected"})
 
 @api_view(['GET'])
 def ingest_spotify_playlist(req):
-
     if not safe_user(req) or req.user.profile.role != "superadmin":
         return Response({"error": "Unauthorized"}, status=403)
-
     key = f"rl:{req.user.id}:ingest"
     if not rate_limit(key):
         return Response({"error": "Too many requests"}, status=429)
-
     token = req.session.get("access_token")
     playlist_id = req.GET.get("playlist_id")
-
     if not token:
         return Response({"error": "Spotify not connected"}, status=400)
-
     if not playlist_id or len(playlist_id) > 200:
         return Response({"error": "Invalid playlist_id"}, status=400)
 
@@ -196,23 +179,15 @@ def ingest_spotify_playlist(req):
     return Response({"message": "Playlist ingested"})
 
 def test_spotify_tracks(request):
-
     token = request.session.get("access_token")
-
     if not token:
         return Response({"error": "Spotify not connected"}, status=400)
-
     try:
         tracks = search_tracks(token, "happy")
     except Exception:
         logger.error("Spotify test failed", exc_info=True)
         return Response({"error": "Spotify failed"}, status=500)
-
-    return Response({
-        "count": len(tracks),
-        "tracks": tracks[:5]
-    })
-
+    return Response({"count": len(tracks),"tracks": tracks[:5]})
 
 # -------------------------
 # PREMIUM
@@ -238,16 +213,16 @@ def list_songs(req):
 @permission_classes([IsAuthenticated])
 def play_song(req, song_id):
     song = get_object_or_404(Song, id=song_id)
-
     profile = getattr(req.user, "profile", None) if req.user.is_authenticated else None
-    print(req.user)
-    print(song.is_premium)
-    print(profile.role if profile else None)
+    # print(req.user)
+    # print(song.is_premium)
+    # print(profile.role if profile else None)
 
+    logger.info("User: %s", req.user)
+    logger.info("Song premium status: %s", song.is_premium)
+    logger.info("Profile role: %s", profile.role if profile else None)
     if song.is_premium:
-        if not profile or (
-            profile.role not in ["admin", "superadmin"] and not is_premium(profile)
-        ):
+        if not profile or (profile.role not in ["admin", "superadmin"] and not is_premium(profile)):  
             return Response({"error": "Premium required"}, status=403)
 
     return Response({"song": song.title,"preview_url": song.preview_url,"spotify_url": f"https://open.spotify.com/track/{song.external_id}"})
@@ -289,108 +264,51 @@ class MoodViewSet(viewsets.ViewSet):
     def experience(self, req, pk=None):
         tenant = get_tenant(req)
         key = f"rl:{req.user.id}:{tenant.id}:experience"
-        print(key)
+        logger.info("rate limit key :", key)
         if not rate_limit(key):
             return Response({"error": "Too many requests"}, status=429)
-
         mood = get_object_or_404(Mood, pk=pk)
-        
         if not tenant:
             return Response({"error": "Tenant not found"}, status=400)
-
         try:
-            session, recs = generate_session_recommendations(
-                user=req.user,
-                mood=mood
-            )
+            session, recs = generate_session_recommendations(user=req.user,mood=mood)
         except Exception:
             logger.error("Recommendation failed", exc_info=True)
             return Response({"error": "Recommendation failed"}, status=500)
-
         if not recs:
             return Response({"error": "No recommendations"}, status=400)
-
         songs = [r.song for r in recs if r.song]
-
         response_text = get_mood_response(mood.name)
-
         session.response = response_text
         session.save()
-
-        return Response({
-            "mood": mood.name,
-            "message": response_text,
-            "songs": SongSerializer(songs, many=True).data
-        })
-
-
+        return Response({"mood": mood.name,"message": response_text,"songs": SongSerializer(songs, many=True).data})
+            
 # -------------------------
 # SONG VIEWSET
 # -------------------------
 
 class SongViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-
     def list(self, req):
-
-        songs = Song.objects.filter(
-            is_available=True
-        )
-        return Response(
-            SongSerializer(
-                songs,
-                many=True
-            ).data
-        )
-
-    @action(
-        detail=True,
-        methods=["get"]
-    )
+        songs = Song.objects.filter(is_available=True)
+        return Response(SongSerializer(songs,many=True).data)
+    @action(detail=True,methods=["get"])
     def play(self, req, pk=None):
-
-        song = get_object_or_404(
-            Song,
-            pk=pk
-        )
+        song = get_object_or_404(Song, pk=pk)
         profile = req.user.profile
-
         if song.is_premium:
-            allowed_roles = [
-                "admin",
-                "superadmin"
-            ]
-            if (
-                profile.role not in allowed_roles
-                and not is_premium(profile)
-            ):
-                return Response(
-                    {
-                        "error":
-                            "Premium required"
-                    },
-                    status=403
-                )
+            allowed_roles = ["admin","superadmin"]
+            if(profile.role not in allowed_roles and not is_premium(profile)):
+                return Response({"error":"Premium required"},status=403)
 
-        return Response({
-            "song":
-                song.title,
-            "preview_url":
-                song.preview_url,
-            "spotify_url":
-                f"https://open.spotify.com/track/{song.external_id}"
+        return Response({"song":song.title,"preview_url":song.preview_url,"spotify_url":f"https://open.spotify.com/track/{song.external_id}"})   
 
-        })
-
-    @action(
-        detail=True,
-        methods=["post"]
-    )
-    def interact(self, req, pk=None):
-
-        action_type = req.data.get(
-            "action"
-        )
+    @action(detail=True,methods=["post"])  
+    
+    def interact(self, req, pk=None):action_type = req.data.get("action")
+        
+            
+        
         allowed_actions = [
             "play",
             "skip",
@@ -444,7 +362,7 @@ class SongViewSet(viewsets.ViewSet):
 @permission_classes([AllowAny])
 def request_reset_view(req):
     print("DATA:", req.data)
-    logger.error("reset did not work",exc_info=True)
+    logger.info("reset request data :", req.data)
     email =(req.data.get("email") or "").strip().lower()
     request_password_reset(email)
     return Response({"message":"Reset link is sent to your existing email address"})

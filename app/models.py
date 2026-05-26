@@ -160,16 +160,15 @@ class Memory(TenantModel):
 # User Interaction (TENANT SCOPED)
 # -------------------------
 class UserSongInteraction(TenantModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    song = models.ForeignKey(Song, on_delete=models.CASCADE)
-    mood = models.ForeignKey(Mood, on_delete=models.CASCADE)
-    play_count = models.PositiveIntegerField(default=0)
-    skipped_count = models.PositiveIntegerField(default=0)
-    liked = models.BooleanField(default=False)
-    last_played = models.DateTimeField(null=True, blank=True)
+    user=models.ForeignKey(User, on_delete=models.CASCADE)
+    song=models.ForeignKey(Song, on_delete=models.CASCADE)
+    mood=models.ForeignKey(Mood, on_delete=models.CASCADE)
+    play_count=models.PositiveIntegerField(default=0)
+    skipped_count=models.PositiveIntegerField(default=0)
+    liked=models.BooleanField(default=False)
+    last_played=models.DateTimeField(null=True, blank=True)
     class Meta:
-        unique_together = ("tenant", "user", "song", "mood")
-
+        unique_together=("tenant", "user", "song", "mood")
 
 # -------------------------
 # Mood Session (TENANT SCOPED)

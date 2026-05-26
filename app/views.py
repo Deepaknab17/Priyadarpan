@@ -303,38 +303,17 @@ class SongViewSet(viewsets.ViewSet):
 
         return Response({"song":song.title,"preview_url":song.preview_url,"spotify_url":f"https://open.spotify.com/track/{song.external_id}"})   
 
-    @action(detail=True,methods=["post"])  
-    
-    def interact(self, req, pk=None):action_type = req.data.get("action")
-        
-            
-        
-        allowed_actions = [
-            "play",
-            "skip",
-            "like"
-        ]
+    @action(detail=True, methods=["post"])
+    def interact(self, req, pk=None):
+        action_type = req.data.get("action")
+        allowed_actions = ["play","skip","like"]
         if action_type not in allowed_actions:
-
-            return Response(
-                {
-                    "error":
-                        "Invalid action"
-                },
-                status=400
-            )
-
+            return Response({"error":"Invalid action"},status=400)
         song = get_object_or_404(song,pk=pk)
         tenant = get_tenant(req)
         if not tenant:
             return Response({"error":"No tenant found"},status=400)
-
-        session = (
-            MoodSession.objects.filter( user=req.user,tenant=tenant)
-            .order_by("-generated_at")
-            .first()
-        )
-
+        session = (MoodSession.objects.filter( user=req.user,tenant=tenant).order_by("-generated_at").first())
         if not session:
             return Response({"error":"No active session as such"},status=400)
     
@@ -370,8 +349,9 @@ def request_reset_view(req):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password(req):
-    logger.error("reset_failed",exc_info=True)
-    print("DATA:", req.data)
+    logger.info("password reset data",req.data)
+    # print("DATA:", req.data)
+
     token = req.data.get("token")
     password = req.data.get("password")
     try:
